@@ -1,17 +1,74 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <table>
-        <tr valign="top">
-            <td><img src="{{ user.avatar(128) }}"></td>
-            <td><h1>User: {{ user.username }}</h1></td>
-            {% if user.last_login %}<p>Last Login on: {{ user.last_login }}</p> {% endif %}
-            {% if user == current_user %}
-                <p><a href="{{ url_for('edit_profile') }}">Edit your profile</a></p>
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-user"></i> User Profile
+        </div>
+        
+        <div class="user-profile">
+            <img src="{{ user.avatar(128) }}" alt="{{ user.username }}'s avatar" class="user-avatar">
+            <div class="user-info">
+                <h1>{{ user.display_name }}</h1>
+                <p class="text-muted">@{{ user.username }}</p>
+                
+                {% if user.email %}
+                    <p><i class="fas fa-envelope"></i> {{ user.email }}</p>
                 {% endif %}
-        </tr>
-    </table>
-    <hr>
-   
-    {% endfor %}
+                
+                {% if user.last_login %}
+                    <p><i class="fas fa-clock"></i> Last login: {{ user.last_login.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                {% endif %}
+                
+                {% if user == current_user %}
+                    <div style="margin-top: 1.5rem;">
+                        <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Edit Profile
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Statistics -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-chart-bar"></i> Account Statistics
+        </div>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>0</h3>
+                <p>Total Scans</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bug"></i>
+                </div>
+                <h3>0</h3>
+                <p>Vulnerabilities Found</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-check"></i>
+                </div>
+                <h3>{{ user.subscription_tier.title() }}</h3>
+                <p>Subscription Tier</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-calendar"></i>
+                </div>
+                <h3>{{ user.created_at.strftime('%b %Y') }}</h3>
+                <p>Member Since</p>
+            </div>
+        </div>
+    </div>
 {% endblock %}

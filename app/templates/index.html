@@ -1,7 +1,57 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Hi, {{ current_user.username }}!</h1>
+    <div class="dashboard-welcome">
+        <h1>Welcome back, {{ current_user.username }}!</h1>
+        <p>Your security scanning dashboard</p>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>Quick Scan</h3>
+                <p>Start a fast security scan to identify common vulnerabilities</p>
+                <a href="#" class="btn btn-primary">Start Scan</a>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Scan History</h3>
+                <p>View your previous scans and track security improvements</p>
+                <a href="#" class="btn btn-primary">View History</a>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h3>Reports</h3>
+                <p>Generate and download detailed security reports</p>
+                <a href="#" class="btn btn-primary">Generate Report</a>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <h3>Settings</h3>
+                <p>Configure your account and scan preferences</p>
+                <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Manage Account</a>
+            </div>
+        </div>
+    </div>
     
-    {% endfor %}
+    <!-- Recent Activity Section -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-clock"></i> Recent Activity
+        </div>
+        <div style="text-align: center; padding: 2rem; color: #6c757d;">
+            <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <p>No recent scans found. Start your first security scan above!</p>
+        </div>
+    </div>
 {% endblock %}
