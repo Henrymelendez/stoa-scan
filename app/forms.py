@@ -54,3 +54,7 @@ class EditProfileForm(FlaskForm):
                 User.last_name == last_name.data))
             if user is not None:
                 raise ValidationError('Please use a different last name.')
+            
+class ResetPasswordRequestForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    submit = SubmitField('Request Password Reset')
