@@ -1,7 +1,9 @@
-from app import app
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 from app.models import User, Scan, ToolResult, Vulnerability, Report, ApiKey, ConsentLog, Subscription
+from app import create_app, db
+
+app = create_app()
 
 @app.shell_context_processor
 def make_shell_context():

@@ -392,25 +392,25 @@
     <nav class="navbar">
         <div class="container">
             <div class="nav-container">
-                <a href="{{ url_for('index') }}" class="nav-brand">
+                <a href="{{ url_for('main.index') }}" class="nav-brand">
                     <i class="fas fa-shield-alt"></i> PentestSaaS
                 </a>
                 <div class="nav-links">
                     {% if current_user.is_anonymous %}
-                        <a href="{{ url_for('login') }}" class="nav-link">
+                        <a href="{{ url_for('auth.login') }}" class="nav-link">
                             <i class="fas fa-sign-in-alt"></i> Login
                         </a>
-                        <a href="{{ url_for('register') }}" class="nav-link">
+                        <a href="{{ url_for('auth.register') }}" class="nav-link">
                             <i class="fas fa-user-plus"></i> Register
                         </a>
                     {% else %}
-                        <a href="{{ url_for('index') }}" class="nav-link">
+                        <a href="{{ url_for('main.index') }}" class="nav-link">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
                         <a href="{{ url_for('user', username=current_user.username) }}" class="nav-link">
                             <i class="fas fa-user"></i> Profile
                         </a>
-                        <a href="{{ url_for('logout') }}" class="nav-link">
+                        <a href="{{ url_for('auth.logout') }}" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i> Logout
                         </a>
                     {% endif %}
