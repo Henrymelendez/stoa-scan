@@ -4,20 +4,29 @@ os.environ['DATABASE_URL'] = 'sqlite://'
 
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+from config import Config
 import unittest
 import json
-from app import app, db
+from app import  db, create_app
 from app.models import (
     User, Scan, ToolResult, Vulnerability, Report, ApiKey, 
     ConsentLog, Subscription, get_user_by_email, get_user_by_username,
     get_user_scans, get_scan_with_vulnerabilities, get_active_subscription,
     can_user_create_scan
 )
+from config import Config
+
+
+class TestConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
 class UserModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
 
@@ -97,7 +106,8 @@ class UserModelCase(unittest.TestCase):
 
 class ScanModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -209,7 +219,8 @@ class ScanModelCase(unittest.TestCase):
 
 class ToolResultModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -263,7 +274,8 @@ class ToolResultModelCase(unittest.TestCase):
 
 class VulnerabilityModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -339,7 +351,8 @@ class VulnerabilityModelCase(unittest.TestCase):
 
 class ReportModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -424,7 +437,8 @@ class ReportModelCase(unittest.TestCase):
 
 class ApiKeyModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -511,7 +525,8 @@ class ApiKeyModelCase(unittest.TestCase):
 
 class SubscriptionModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -584,7 +599,8 @@ class SubscriptionModelCase(unittest.TestCase):
 
 class UtilityFunctionsCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
 
@@ -721,7 +737,8 @@ class UtilityFunctionsCase(unittest.TestCase):
 
 class ConsentLogModelCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -753,7 +770,8 @@ class ConsentLogModelCase(unittest.TestCase):
 
 class NmapScannerCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -1047,7 +1065,8 @@ class NmapScannerCase(unittest.TestCase):
 
 class ZapScannerCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -1521,7 +1540,8 @@ class ZapScannerCase(unittest.TestCase):
 
 class MetasploitScannerCase(unittest.TestCase):
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -2027,7 +2047,8 @@ class MetasploitDatabaseIntegrationCase(unittest.TestCase):
     """Test Metasploit integration with database models"""
     
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
         
@@ -2294,7 +2315,8 @@ class MetasploitUtilityFunctionsCase(unittest.TestCase):
     """Test standalone utility functions for Metasploit integration"""
     
     def setUp(self):
-        self.app_context = app.app_context()
+        self.app = create_app(TestConfig)  # Create app with TestConfig
+        self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
 

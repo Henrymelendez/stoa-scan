@@ -16,7 +16,7 @@ login = LoginManager()
 login.login_view = 'auth.login'  # Redirect to login page if not authenticated
 mail = Mail()
 
-def create_app():
+def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(Config)
     db.init_app(app)
