@@ -1318,7 +1318,7 @@ Generates professional security scan reports in various formats
 import os
 import json
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Tuple, Optional
 from urllib.parse import urlparse
 import logging
@@ -2620,7 +2620,7 @@ if __name__ == '__main__':
                 print(f"Report generation test failed: {str(e)}")
         else:
             print("No test scan found. Create a scan first.")
-            '# app/utils/report_generator.py
+            '# app/utils/report_generator.py'
 """
 Report generation utilities for PentestSaaS
 Generates professional security scan reports in various formats

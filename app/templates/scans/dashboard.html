@@ -1,0 +1,996 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <!-- Scan Dashboard Header -->
+    <div class="dashboard-header">
+        <h1><i class="fas fa-tachometer-alt"></i> Security Scan Dashboard</h1>
+        <p>Monitor your security scans and vulnerability findings</p>
+        
+        <div class="dashboard-actions">
+            <a href="{{ url_for('scans.new_scan') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Scan
+            </a>
+            <a href="{{ url_for('scans.quick_scan_page') }}" class="btn btn-secondary">
+                <i class="fas fa-bolt"></i> Quick Scan
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_scans }}</h3>
+                <p>Total Scans</p>
+                <div class="stat-trend">
+                    {% if status_counts.get('running', 0) > 0 %}
+                        <span class="trend-positive">{{ status_counts['running'] }} Running</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon critical">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_vulnerabilities }}</h3>
+                <p>Vulnerabilities Found</p>
+                <div class="stat-breakdown">
+                    <span class="severity-critical">{{ severity_counts.get('critical', 0) }} Critical</span>
+                    <span class="severity-high">{{ severity_counts.get('high', 0) }} High</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon success">
+                <i class="fas fa-shield-check"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ status_counts.get('completed', 0) }}</h3>
+                <p>Completed Scans</p>
+                <div class="stat-trend">
+                    {% if status_counts.get('failed', 0) > 0 %}
+                        <span class="trend-negative">{{ status_counts['failed'] }} Failed</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon info">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ status_counts.get('queued', 0) + status_counts.get('running', 0) }}</h3>
+                <p>Active Scans</p>
+                <div class="stat-breakdown">
+                    <span class="status-queued">{{ status_counts.get('queued', 0) }} Queued</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions-section">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-bolt"></i> Quick Actions
+            </div>
+            
+            <div class="quick-actions-grid">
+                <button class="quick-action-btn" onclick="startQuickScan()">
+                    <i class="fas fa-search"></i>
+                    <span>Quick Web Scan</span>
+                    <small>Fast vulnerability check</small>
+                </button>
+                
+                <button class="quick-action-btn" onclick="startNetworkScan()">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Network Discovery</span>
+                    <small>Port and service scan</small>
+                </button>
+                
+                <a href="{{ url_for('scans.scans_list') }}" class="quick-action-btn">
+                    <i class="fas fa-history"></i>
+                    <span>Scan History</span>
+                    <small>View all past scans</small>
+                </a>
+                
+                <button class="quick-action-btn" onclick="generateBulkReport()">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Generate Report</span>
+                    <small>Export scan results</small>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Scans -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-history"></i> Recent Scans
+            <div class="header-actions">
+                <a href="{{ url_for('scans.scans_list') }}" class="btn btn-sm btn-outline">View All</a>
+            </div>
+        </div>
+        
+        {% if recent_scans %}
+            <div class="scans-table-container">
+                <table class="scans-table">
+                    <thead>
+                        <tr>
+                            <th>Scan Name</th>
+                            <th>Target</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Vulnerabilities</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scan in recent_scans %}
+                            <tr class="scan-row" data-scan-id="{{ scan.id }}">
+                                <td>
+                                    <strong>{{ scan.scan_name }}</strong>
+                                    {% if scan.duration %}
+                                        <small class="text-muted">
+                                            ({{ "%.1f"|format(scan.duration / 60) }}m)
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <code class="target-url">{{ scan.target_url[:50] }}{% if scan.target_url|length > 50 %}...{% endif %}</code>
+                                </td>
+                                <td>
+                                    <span class="scan-type-badge scan-type-{{ scan.scan_type }}">
+                                        {{ scan.scan_type|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-{{ scan.status }}">
+                                        {% if scan.status == 'running' %}
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        {% elif scan.status == 'completed' %}
+                                            <i class="fas fa-check"></i>
+                                        {% elif scan.status == 'failed' %}
+                                            <i class="fas fa-times"></i>
+                                        {% elif scan.status == 'queued' %}
+                                            <i class="fas fa-clock"></i>
+                                        {% endif %}
+                                        {{ scan.status|title }}
+                                    </span>
+                                    {% if scan.status == 'running' %}
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" style="width: {{ scan.progress_percentage|default(0) }}%"></div>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if scan.total_vulnerabilities > 0 %}
+                                        <div class="vulnerability-summary">
+                                            <span class="vuln-count">{{ scan.total_vulnerabilities }}</span>
+                                            {% if scan.high_severity_count > 0 %}
+                                                <span class="severity-badge severity-high">{{ scan.high_severity_count }} High</span>
+                                            {% endif %}
+                                            {% if scan.medium_severity_count > 0 %}
+                                                <span class="severity-badge severity-medium">{{ scan.medium_severity_count }} Med</span>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">None found</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if scan.created_at %}
+                                        <small class="text-muted">{{ scan.created_at.strftime('%m/%d/%Y %H:%M') }}</small>
+                                    {% else %}
+                                        <small class="text-muted">Unknown</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{{ url_for('scans.scan_detail', scan_id=scan.id) }}" 
+                                           class="btn btn-sm btn-outline" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if scan.status == 'running' %}
+                                            <button onclick="cancelScan({{ scan.id }})" 
+                                                    class="btn btn-sm btn-danger" title="Cancel">
+                                                <i class="fas fa-stop"></i>
+                                            </button>
+                                        {% elif scan.status == 'failed' %}
+                                            <button onclick="retryScan({{ scan.id }})" 
+                                                    class="btn btn-sm btn-warning" title="Retry">
+                                                <i class="fas fa-redo"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-search" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem;"></i>
+                <h3>No scans yet</h3>
+                <p>Start your first security scan to see results here</p>
+                <a href="{{ url_for('scans.new_scan') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Your First Scan
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Vulnerability Trends Chart -->
+    {% if total_vulnerabilities > 0 %}
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-line"></i> Vulnerability Overview
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="vulnerabilityChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Quick Scan Modal -->
+    <div id="quickScanModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bolt"></i> Quick Scan</h3>
+                <span class="modal-close" onclick="closeQuickScanModal()">&times;</span>
+            </div>
+            
+            <form id="quickScanForm" onsubmit="submitQuickScan(event)">
+                <div class="form-group">
+                    <label for="quickScanTarget">Target URL or IP</label>
+                    <input type="text" id="quickScanTarget" name="target" 
+                           placeholder="https://example.com or 192.168.1.1" 
+                           class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quickScanType">Scan Type</label>
+                    <select id="quickScanType" name="scan_type" class="form-control">
+                        <option value="web">Web Application</option>
+                        <option value="network">Network/Infrastructure</option>
+                        <option value="comprehensive">Comprehensive</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Start Scan
+                    </button>
+                    <button type="button" onclick="closeQuickScanModal()" class="btn btn-secondary">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        text-align: center;
+        padding: 2rem 0;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%);
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .dashboard-actions {
+        margin-top: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: var(--box-shadow);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .stat-icon {
+        font-size: 2rem;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent-gradient);
+        color: white;
+    }
+
+    .stat-icon.critical {
+        background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+    }
+
+    .stat-icon.success {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    }
+
+    .stat-icon.info {
+        background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    }
+
+    .stat-content h3 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-dark);
+    }
+
+    .stat-content p {
+        margin: 0;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .stat-trend, .stat-breakdown {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
+
+    .trend-positive {
+        color: #059669;
+    }
+
+    .trend-negative {
+        color: #dc2626;
+    }
+
+    .severity-critical {
+        background: #fef2f2;
+        color: #991b1b;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .severity-high {
+        background: #fffbeb;
+        color: #92400e;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .quick-actions-section {
+        margin-bottom: 2rem;
+    }
+
+    .quick-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        padding: 1rem 0;
+    }
+
+    .quick-action-btn {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        color: var(--text-dark);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .quick-action-btn:hover {
+        border-color: #dc2626;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+        color: var(--text-dark);
+        text-decoration: none;
+    }
+
+    .quick-action-btn i {
+        font-size: 1.5rem;
+        color: #dc2626;
+    }
+
+    .quick-action-btn span {
+        font-weight: 600;
+    }
+
+    .quick-action-btn small {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    .scans-table-container {
+        overflow-x: auto;
+    }
+
+    .scans-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+
+    .scans-table th {
+        background: #f8fafc;
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #e2e8f0;
+        color: var(--text-dark);
+    }
+
+    .scans-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .scan-row:hover {
+        background: #f8fafc;
+    }
+
+    .target-url {
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #374151;
+    }
+
+    .scan-type-badge {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .scan-type-web {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .scan-type-network {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .scan-type-exploit {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .scan-type-comprehensive {
+        background: #f3e8ff;
+        color: #7c3aed;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-completed {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-running {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-failed {
+        background: #fecaca;
+        color: #991b1b;
+    }
+
+    .status-queued {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        margin-top: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+        transition: width 0.3s ease;
+    }
+
+    .vulnerability-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .vuln-count {
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .severity-badge {
+        font-size: 0.7rem;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-weight: 600;
+    }
+
+    .severity-high {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .severity-medium {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid #dc2626;
+        color: #dc2626;
+        text-decoration: none;
+    }
+
+    .btn-outline:hover {
+        background: #dc2626;
+        color: white;
+        text-decoration: none;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state h3 {
+        margin: 1rem 0;
+        color: var(--text-dark);
+    }
+
+    .chart-container {
+        padding: 1rem;
+        height: 300px;
+    }
+
+    .header-actions {
+        margin-left: auto;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    /* Modal Styles */
+    .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 0;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: var(--text-dark);
+    }
+
+    .modal-close {
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: #6c757d;
+    }
+
+    .modal form {
+        padding: 1.5rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .quick-actions-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+
+        .dashboard-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .scans-table {
+            font-size: 0.9rem;
+        }
+
+        .scans-table th,
+        .scans-table td {
+            padding: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Real-time scan status updates
+    function updateScanStatus() {
+        const runningScans = document.querySelectorAll('.status-running');
+        
+        runningScans.forEach(statusElement => {
+            const row = statusElement.closest('.scan-row');
+            const scanId = row.dataset.scanId;
+            
+            fetch(`/api/scans/${scanId}/status`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update status badge
+                    if (data.status !== 'running') {
+                        location.reload(); // Refresh page to show completed status
+                    } else {
+                        // Update progress bar
+                        const progressFill = row.querySelector('.progress-fill');
+                        if (progressFill) {
+                            progressFill.style.width = `${data.progress}%`;
+                        }
+                    }
+                })
+                .catch(error => console.error('Error updating scan status:', error));
+        });
+    }
+
+    // Update scan statuses every 10 seconds
+    setInterval(updateScanStatus, 10000);
+
+    // Quick scan functions
+    function startQuickScan() {
+        const modal = document.getElementById('quickScanModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            const targetInput = document.getElementById('quickScanTarget');
+            if (targetInput) {
+                targetInput.focus();
+            }
+        }
+    }
+
+    function startNetworkScan() {
+        const modal = document.getElementById('quickScanModal');
+        const scanType = document.getElementById('quickScanType');
+        if (modal && scanType) {
+            modal.style.display = 'flex';
+            scanType.value = 'network';
+            const targetInput = document.getElementById('quickScanTarget');
+            if (targetInput) {
+                targetInput.focus();
+            }
+        }
+    }
+
+    function closeQuickScanModal() {
+        const modal = document.getElementById('quickScanModal');
+        const form = document.getElementById('quickScanForm');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        if (form) {
+            form.reset();
+        }
+    }
+
+    function submitQuickScan(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const target = formData.get('target');
+        const scanType = formData.get('scan_type');
+        
+        if (!target) {
+            alert('Please enter a target URL or IP address');
+            return;
+        }
+        
+        // Disable form
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+        submitBtn.disabled = true;
+        
+        fetch('/api/quick-scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                target: target,
+                scan_type: scanType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeQuickScanModal();
+                window.location.href = data.redirect_url;
+            } else {
+                alert(`Error: ${data.error}`);
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error starting quick scan:', error);
+            alert('Error starting scan. Please try again.');
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    }
+
+    // Scan management functions
+    function cancelScan(scanId) {
+        if (!confirm('Are you sure you want to cancel this scan?')) {
+            return;
+        }
+        
+        fetch(`/api/scans/${scanId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(`Error: ${data.error || 'Unknown error occurred'}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error cancelling scan:', error);
+            alert('Error cancelling scan. Please try again.');
+        });
+    }
+
+    function retryScan(scanId) {
+        if (!confirm('Are you sure you want to retry this scan?')) {
+            return;
+        }
+        
+        fetch(`/scans/${scanId}/retry`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-Token': getCsrfToken()
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error retrying scan. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error retrying scan:', error);
+            alert('Error retrying scan. Please try again.');
+        });
+    }
+
+    // Helper function to get CSRF token (if using Flask-WTF)
+    function getCsrfToken() {
+        const token = document.querySelector('meta[name=csrf-token]');
+        return token ? token.getAttribute('content') : '';
+    }
+
+    function generateBulkReport() {
+        // Navigate to report generation page
+        window.location.href = '{{ url_for("scans.scans_list") }}?action=bulk_report';
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('quickScanModal');
+        if (event.target === modal) {
+            closeQuickScanModal();
+        }
+    }
+
+    // Vulnerability chart (if Chart.js is available)
+    {% if total_vulnerabilities > 0 %}
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('vulnerabilityChart');
+        if (ctx && typeof Chart !== 'undefined') {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        'Critical', 'High', 'Medium', 'Low', 'Info'
+                    ],
+                    datasets: [{
+                        data: [
+                            {{ severity_counts.get('critical', 0) }},
+                            {{ severity_counts.get('high', 0) }},
+                            {{ severity_counts.get('medium', 0) }},
+                            {{ severity_counts.get('low', 0) }},
+                            {{ severity_counts.get('info', 0) }}
+                        ],
+                        backgroundColor: [
+                            '#dc2626', '#f59e0b', '#3b82f6', '#6b7280', '#9ca3af'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Vulnerability Distribution by Severity'
+                        }
+                    }
+                }
+            });
+        }
+    });
+    {% endif %}
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 'k': // Ctrl+K for quick scan
+                    e.preventDefault();
+                    startQuickScan();
+                    break;
+                case 'n': // Ctrl+N for new scan
+                    e.preventDefault();
+                    window.location.href = '{{ url_for("scans.new_scan") }}';
+                    break;
+                case 'h': // Ctrl+H for scan history
+                    e.preventDefault();
+                    window.location.href = '{{ url_for("scans.scans_list") }}';
+                    break;
+            }
+        }
+        
+        // ESC to close modals
+        if (e.key === 'Escape') {
+            closeQuickScanModal();
+        }
+    });
+
+    // Show keyboard shortcuts tooltip
+    function showKeyboardShortcuts() {
+        alert('Keyboard Shortcuts:\nCtrl+K - Quick Scan\nCtrl+N - New Scan\nCtrl+H - Scan History\nESC - Close Modal');
+    }
+
+    // Add help tooltip
+    document.addEventListener('DOMContentLoaded', function() {
+        const helpBtn = document.createElement('button');
+        helpBtn.innerHTML = '<i class="fas fa-question-circle"></i>';
+        helpBtn.className = 'btn btn-sm btn-outline help-button';
+        helpBtn.title = 'Keyboard Shortcuts';
+        helpBtn.onclick = showKeyboardShortcuts;
+        helpBtn.style.position = 'fixed';
+        helpBtn.style.bottom = '20px';
+        helpBtn.style.right = '20px';
+        helpBtn.style.borderRadius = '50%';
+        helpBtn.style.width = '40px';
+        helpBtn.style.height = '40px';
+        document.body.appendChild(helpBtn);
+    });
+</script>
+
+<!-- Load Chart.js for vulnerability distribution chart -->
+{% if total_vulnerabilities > 0 %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+{% endif %}
+{% endblock %}
