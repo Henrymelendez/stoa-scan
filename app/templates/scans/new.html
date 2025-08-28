@@ -1,1054 +1,319 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create New Security Scan - PentestSaaS</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #dc2626;
-            --primary-dark: #b91c1c;
-            --secondary-color: #0f172a;
-            --accent-gradient: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            --text-dark: #1e293b;
-            --text-muted: #64748b;
-            --background-light: #f8fafc;
-            --border-color: #e2e8f0;
-            --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: var(--background-light);
-            color: var(--text-dark);
-            line-height: 1.6;
-        }
-
-        .navbar {
-            background: white;
-            box-shadow: var(--box-shadow);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .nav-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0;
-        }
-
-        .nav-brand {
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-decoration: none;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .nav-link {
-            text-decoration: none;
-            color: var(--text-dark);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .nav-link:hover {
-            background: var(--background-light);
-            color: var(--primary-color);
-        }
-
-        .nav-link.active {
-            background: var(--accent-gradient);
-            color: white;
-        }
-
-        .main-content {
-            padding: 2rem 0;
-        }
-
-        .scan-wizard-container {
-            max-width: 900px;
-            margin: 2rem auto;
-        }
-
-        .wizard-header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .wizard-header h1 {
-            font-size: 2.2rem;
-            margin-bottom: 0.5rem;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .wizard-header p {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-        }
-
-        .wizard-content {
-            background: white;
-            border-radius: 12px;
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
-
-        .wizard-step {
-            padding: 2rem;
-            display: none;
-            min-height: 500px;
-        }
-
-        .wizard-step.active {
-            display: block;
-        }
-
-        .wizard-step h2 {
-            margin-bottom: 1.5rem;
-            color: var(--text-dark);
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 0.5rem;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group {
-            flex: 1;
-            margin-bottom: 1.5rem;
-        }
-
-        .col-md-4 {
-            flex: 0 0 33.333333%;
-        }
-
-        .col-md-6 {
-            flex: 0 0 50%;
-        }
-
-        .col-md-8 {
-            flex: 0 0 66.666667%;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: var(--transition);
-            background: white;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-        }
-
-        .form-control.is-invalid {
-            border-color: #dc2626;
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-        }
-
-        .form-control.is-valid {
-            border-color: #059669;
-            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
-        }
-
-        .form-help {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-top: 0.25rem;
-            display: block;
-        }
-
-        .error-message {
-            color: #dc2626;
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-            display: block;
-        }
-
-        .scan-type-info {
-            margin: 2rem 0;
-        }
-
-        .info-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .info-card h4 {
-            margin: 0 0 1rem 0;
-            color: var(--text-dark);
-        }
-
-        .info-card ul {
-            margin: 1rem 0;
-            padding-left: 1.5rem;
-        }
-
-        .info-card li {
-            margin-bottom: 0.5rem;
-            color: var(--text-muted);
-        }
-
-        .info-stats {
-            display: flex;
-            gap: 2rem;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .stat {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-
-        .warning-box {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border: 1px solid #f59e0b;
-            border-radius: 8px;
-            padding: 1rem;
-            margin: 1.5rem 0;
-            border-left: 4px solid #f59e0b;
-        }
-
-        .warning-box h4 {
-            color: #92400e;
-            margin-bottom: 0.5rem;
-        }
-
-        .warning-box p {
-            color: #92400e;
-            margin: 0;
-        }
-
-        .tool-option {
-            background: white;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .tool-option:hover {
-            border-color: var(--primary-color);
-        }
-
-        .tool-option.selected {
-            border-color: var(--primary-color);
-            background: rgba(220, 38, 38, 0.05);
-        }
-
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 1rem 0;
-        }
-
-        .checkbox-container input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-        }
-
-        .consent-card {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border: 1px solid #f59e0b;
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .consent-card h3 {
-            margin: 0 0 1rem 0;
-            color: #92400e;
-        }
-
-        .consent-text {
-            margin-bottom: 1.5rem;
-        }
-
-        .consent-checkboxes {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 500;
-            color: #92400e;
-            cursor: pointer;
-        }
-
-        .checkbox-label input[type="checkbox"] {
-            transform: scale(1.2);
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: var(--transition);
-            justify-content: center;
-        }
-
-        .btn-primary {
-            background: var(--accent-gradient);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3);
-        }
-
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #4b5563;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            color: white;
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(5, 150, 105, 0.3);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .wizard-navigation {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 2rem;
-            border-top: 1px solid #e2e8f0;
-            margin-top: 2rem;
-        }
-
-        .wizard-navigation button:only-child {
-            margin-left: auto;
-        }
-
-        .launch-button {
-            font-size: 1.1rem;
-            padding: 0.75rem 2rem;
-            font-weight: 600;
-        }
-
-        .wizard-progress {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 2rem 0;
-            padding: 1rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: var(--box-shadow);
-        }
-
-        .progress-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            min-width: 80px;
-        }
-
-        .step-number {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #e5e7eb;
-            color: #6b7280;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            transition: var(--transition);
-        }
-
-        .progress-step.active .step-number {
-            background: var(--accent-gradient);
-            color: white;
-        }
-
-        .progress-step.completed .step-number {
-            background: #10b981;
-            color: white;
-        }
-
-        .step-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .progress-step.active .step-label {
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-
-        .progress-connector {
-            width: 60px;
-            height: 2px;
-            background: #e5e7eb;
-            margin: 0 1rem;
-        }
-
-        .loading .btn {
-            pointer-events: none;
-        }
-
-        .fa-spinner {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .nav-container {
-                flex-direction: column;
-                gap: 1rem;
-            }
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-plus-circle"></i> Create New Security Scan
+        </div>
+        
+        <form method="POST">
+            {{ form.hidden_tag() }}
             
-            .nav-links {
-                justify-content: center;
-            }
+            <div class="form-group">
+                {{ form.target_url.label(class="form-label") }}
+                {{ form.target_url(class="form-control", placeholder="https://example.com or 192.168.1.100") }}
+                {% if form.target_url.errors %}
+                    <div class="error-message">
+                        {% for error in form.target_url.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-help">
+                    <i class="fas fa-info-circle"></i>
+                    Examples: https://example.com, 192.168.1.100, subdomain.company.com
+                </small>
+            </div>
             
-            .form-row {
-                flex-direction: column;
-            }
+            <div class="form-group">
+                {{ form.scan_type.label(class="form-label") }}
+                {{ form.scan_type(class="form-control", onchange="updateScanTypeInfo()") }}
+                {% if form.scan_type.errors %}
+                    <div class="error-message">
+                        {% for error in form.scan_type.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
             
-            .col-md-4, .col-md-6, .col-md-8 {
-                flex: none;
-            }
+            <div class="form-group">
+                {{ form.scan_name.label(class="form-label") }}
+                {{ form.scan_name(class="form-control", placeholder="Will be auto-generated if left blank") }}
+                {% if form.scan_name.errors %}
+                    <div class="error-message">
+                        {% for error in form.scan_name.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
             
-            .wizard-navigation {
-                flex-direction: column;
-                gap: 1rem;
-            }
+            <div id="scanTypeInfo" class="scan-type-info">
+                <div class="info-card">
+                    <h4>Web Application Scan</h4>
+                    <p>Comprehensive security testing for web applications including OWASP Top 10 vulnerabilities.</p>
+                    <ul>
+                        <li>SQL Injection detection</li>
+                        <li>Cross-Site Scripting (XSS)</li>
+                        <li>Authentication bypass</li>
+                        <li>Directory traversal</li>
+                        <li>SSL/TLS configuration</li>
+                    </ul>
+                    <div class="info-stats">
+                        <div class="stat"><strong>Duration:</strong> 15-30 minutes</div>
+                        <div class="stat"><strong>Tools:</strong> OWASP ZAP, Nmap</div>
+                    </div>
+                </div>
+            </div>
             
-            .progress-connector {
-                display: none;
-            }
+            <div class="form-group">
+                {{ form.scan_preset.label(class="form-label") }}
+                {{ form.scan_preset(class="form-control", onchange="updatePresetInfo()") }}
+                {% if form.scan_preset.errors %}
+                    <div class="error-message">
+                        {% for error in form.scan_preset.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
             
-            .wizard-progress {
-                flex-direction: column;
-                gap: 1rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-container">
-                <a href="#" class="nav-brand">
-                    <i class="fas fa-shield-alt"></i> PentestSaaS
+            <div class="form-group">
+                <label class="form-label">Security Tools</label>
+                <div class="checkbox-container">
+                    {{ form.enable_nmap() }}
+                    {{ form.enable_nmap.label() }}
+                </div>
+                <div class="checkbox-container">
+                    {{ form.enable_zap() }}
+                    {{ form.enable_zap.label() }}
+                </div>
+                <div class="checkbox-container">
+                    {{ form.enable_metasploit() }}
+                    {{ form.enable_metasploit.label() }}
+                </div>
+            </div>
+            
+            <div class="warning-box">
+                <h4><i class="fas fa-exclamation-triangle"></i> Important Notice</h4>
+                <p>Only scan targets you own or have explicit permission to test. Unauthorized scanning may violate laws and terms of service.</p>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Launch Scan
+                </button>
+                <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
                 </a>
-                <div class="nav-links">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a>
-                    <a href="#" class="nav-link active">
-                        <i class="fas fa-plus"></i> New Scan
-                    </a>
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-history"></i> History
-                    </a>
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-user"></i> Profile
-                    </a>
-                </div>
             </div>
-        </div>
-    </nav>
+        </form>
+    </div>
+{% endblock %}
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <div class="scan-wizard-container">
-                <div class="wizard-header">
-                    <h1><i class="fas fa-plus-circle"></i> Create New Security Scan</h1>
-                    <p>Configure and launch a comprehensive security assessment</p>
-                </div>
+{% block extra_css %}
+<style>
+    .scan-type-info {
+        margin: 1.5rem 0;
+    }
 
-                <div class="wizard-content">
-                    <form id="newScanForm" novalidate>
-                        <!-- Step 1: Target Configuration -->
-                        <div class="wizard-step active" id="step1">
-                            <h2><i class="fas fa-bullseye"></i> Target Configuration</h2>
-                            
-                            <div class="form-row">
-                                <div class="form-group col-md-8">
-                                    <label for="target_url" class="form-label">Target URL or IP Address</label>
-                                    <input type="text" id="target_url" name="target_url" class="form-control" 
-                                           placeholder="https://example.com or 192.168.1.1" required>
-                                    <small class="form-help">
-                                        <i class="fas fa-info-circle"></i>
-                                        Examples: https://example.com, 192.168.1.100, subdomain.company.com
-                                    </small>
-                                </div>
-                                
-                                <div class="form-group col-md-4">
-                                    <label for="scan_type" class="form-label">Scan Type</label>
-                                    <select id="scan_type" name="scan_type" class="form-control" onchange="updateScanTypeInfo()">
-                                        <option value="web">Web Application</option>
-                                        <option value="network">Network Infrastructure</option>
-                                        <option value="exploit">Exploit Testing</option>
-                                        <option value="comprehensive">Comprehensive Scan</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="scan_name" class="form-label">Scan Name (Optional)</label>
-                                <input type="text" id="scan_name" name="scan_name" class="form-control" 
-                                       placeholder="Will be auto-generated if left blank">
-                            </div>
-                            
-                            <div class="scan-type-info" id="scanTypeInfo">
-                                <!-- Scan type information will be populated by JavaScript -->
-                            </div>
-                            
-                            <div class="wizard-navigation">
-                                <button type="button" class="btn btn-primary" onclick="nextStep()">
-                                    Next: Scan Configuration <i class="fas fa-arrow-right"></i>
-                                </button>
-                            </div>
-                        </div>
+    .info-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
 
-                        <!-- Step 2: Scan Configuration -->
-                        <div class="wizard-step" id="step2">
-                            <h2><i class="fas fa-sliders-h"></i> Scan Configuration</h2>
-                            
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <label for="scan_preset" class="form-label">Scan Intensity</label>
-                                    <select id="scan_preset" name="scan_preset" class="form-control" onchange="updatePresetInfo()">
-                                        <option value="quick">Quick Scan (5-10 minutes)</option>
-                                        <option value="standard" selected>Standard Scan (15-30 minutes)</option>
-                                        <option value="thorough">Thorough Scan (30-60 minutes)</option>
-                                        <option value="comprehensive">Comprehensive (1-2 hours)</option>
-                                    </select>
-                                    <small class="form-help" id="presetHelp">
-                                        Standard scan provides good coverage with reasonable time
-                                    </small>
-                                </div>
-                            </div>
-                            
-                            <!-- Tool Selection -->
-                            <div class="tool-selection" id="toolSelection">
-                                <h3>Security Tools</h3>
-                                <div class="tools-grid">
-                                    <div class="tool-option selected">
-                                        <div class="checkbox-container">
-                                            <input type="checkbox" id="enable_nmap" name="enable_nmap" checked>
-                                            <label for="enable_nmap"><strong>Nmap (Network Scanner)</strong></label>
-                                        </div>
-                                        <p>Network discovery and port scanning</p>
-                                    </div>
-                                    
-                                    <div class="tool-option selected">
-                                        <div class="checkbox-container">
-                                            <input type="checkbox" id="enable_zap" name="enable_zap" checked>
-                                            <label for="enable_zap"><strong>OWASP ZAP (Web Scanner)</strong></label>
-                                        </div>
-                                        <p>Web application vulnerability testing</p>
-                                    </div>
-                                    
-                                    <div class="tool-option">
-                                        <div class="checkbox-container">
-                                            <input type="checkbox" id="enable_metasploit" name="enable_metasploit">
-                                            <label for="enable_metasploit"><strong>Metasploit (Exploit Framework)</strong></label>
-                                        </div>
-                                        <p>Advanced exploitation and validation</p>
-                                        <small class="form-help" style="color: #f59e0b;">⚠️ Use only with proper authorization</small>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="wizard-navigation">
-                                <button type="button" class="btn btn-secondary" onclick="previousStep()">
-                                    <i class="fas fa-arrow-left"></i> Previous
-                                </button>
-                                <button type="button" class="btn btn-primary" onclick="nextStep()">
-                                    Next: Legal Consent <i class="fas fa-arrow-right"></i>
-                                </button>
-                            </div>
-                        </div>
+    .info-card h4 {
+        margin: 0 0 1rem 0;
+        color: var(--text-dark);
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
 
-                        <!-- Step 3: Legal Consent -->
-                        <div class="wizard-step" id="step3">
-                            <h2><i class="fas fa-balance-scale"></i> Legal Consent & Authorization</h2>
-                            
-                            <div class="warning-box">
-                                <h4><i class="fas fa-exclamation-triangle"></i> Important Legal Notice</h4>
-                                <p>You must have explicit authorization to scan any target. Unauthorized scanning may violate laws and regulations.</p>
-                            </div>
-                            
-                            <div class="consent-card">
-                                <h3><i class="fas fa-clipboard-check"></i> Consent Requirements</h3>
-                                <div class="consent-text">
-                                    <p>By proceeding, you confirm that:</p>
-                                    <ul>
-                                        <li>You own the target system or have explicit written authorization</li>
-                                        <li>You understand that unauthorized scanning may be illegal</li>
-                                        <li>You accept full responsibility for the scanning activity</li>
-                                        <li>You will use results responsibly and ethically</li>
-                                    </ul>
-                                </div>
-                                
-                                <div class="consent-checkboxes">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="ownershipConsent" required>
-                                        I own this target or have explicit authorization to scan it
-                                    </label>
-                                    
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="legalConsent" required>
-                                        I understand the legal implications and accept full responsibility
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="wizard-navigation">
-                                <button type="button" class="btn btn-secondary" onclick="previousStep()">
-                                    <i class="fas fa-arrow-left"></i> Previous
-                                </button>
-                                <button type="submit" class="btn btn-success launch-button" id="launchButton">
-                                    <i class="fas fa-rocket"></i> Launch Security Scan
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                
-                <!-- Progress Indicator -->
-                <div class="wizard-progress">
-                    <div class="progress-step active" data-step="1">
-                        <div class="step-number">1</div>
-                        <div class="step-label">Target</div>
-                    </div>
-                    <div class="progress-connector"></div>
-                    <div class="progress-step" data-step="2">
-                        <div class="step-number">2</div>
-                        <div class="step-label">Configure</div>
-                    </div>
-                    <div class="progress-connector"></div>
-                    <div class="progress-step" data-step="3">
-                        <div class="step-number">3</div>
-                        <div class="step-label">Launch</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+    .info-card ul {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+    }
 
-    <script>
-        let currentStep = 1;
-        const totalSteps = 3;
+    .info-card li {
+        margin-bottom: 0.5rem;
+        color: var(--text-muted);
+    }
 
-        // Scan type information
-        const scanTypeInfo = {
-            web: {
-                title: "Web Application Security Scan",
-                description: "Comprehensive testing of web applications for vulnerabilities:",
+    .info-stats {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .stat {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .warning-box {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid #f59e0b;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1.5rem 0;
+        border-left: 4px solid #f59e0b;
+    }
+
+    .warning-box h4 {
+        color: #92400e;
+        margin-bottom: 0.5rem;
+    }
+
+    .warning-box p {
+        color: #92400e;
+        margin: 0;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .error-message {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    .form-help {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateScanTypeInfo() {
+        const scanType = document.getElementById('scan_type').value;
+        const infoDiv = document.getElementById('scanTypeInfo');
+        
+        const scanInfo = {
+            'web': {
+                title: 'Web Application Scan',
+                description: 'Comprehensive security testing for web applications including OWASP Top 10 vulnerabilities.',
                 features: [
-                    "SQL injection and XSS vulnerability detection",
-                    "Authentication and authorization testing", 
-                    "Session management analysis",
-                    "Input validation and data sanitization checks"
+                    'SQL Injection detection',
+                    'Cross-Site Scripting (XSS)',
+                    'Authentication bypass',
+                    'Directory traversal',
+                    'SSL/TLS configuration'
                 ],
-                duration: "15-45 minutes",
-                tools: "ZAP, Nmap"
+                duration: '15-30 minutes',
+                tools: 'OWASP ZAP, Nmap'
             },
-            network: {
-                title: "Network Infrastructure Assessment", 
-                description: "Network-level security testing and reconnaissance:",
+            'network': {
+                title: 'Network Infrastructure Scan',
+                description: 'Port scanning and network service enumeration to identify potential attack vectors.',
                 features: [
-                    "Port scanning and service enumeration",
-                    "Network topology discovery",
-                    "Service version detection",
-                    "Basic vulnerability identification"
+                    'Port scanning',
+                    'Service enumeration',
+                    'OS fingerprinting',
+                    'Firewall detection',
+                    'Network topology mapping'
                 ],
-                duration: "10-30 minutes",
-                tools: "Nmap, Basic Tools"
+                duration: '10-20 minutes',
+                tools: 'Nmap, Custom scanners'
             },
-            exploit: {
-                title: "Exploitation and Penetration Testing",
-                description: "Advanced security testing with exploitation attempts:",
+            'exploit': {
+                title: 'Exploit Testing',
+                description: 'Advanced penetration testing using known exploits and attack techniques.',
                 features: [
-                    "Vulnerability validation through exploitation",
-                    "Privilege escalation testing",
-                    "Post-exploitation analysis", 
-                    "Security control bypass attempts"
+                    'Automated exploitation',
+                    'Privilege escalation',
+                    'Post-exploitation',
+                    'Payload delivery',
+                    'Defense evasion'
                 ],
-                duration: "20-60 minutes",
-                tools: "Metasploit, Nmap, ZAP"
+                duration: '30-60 minutes',
+                tools: 'Metasploit, Custom exploits'
             },
-            comprehensive: {
-                title: "Comprehensive Multi-Tool Security Assessment",
-                description: "Complete security assessment using all available tools:",
+            'comprehensive': {
+                title: 'Comprehensive Security Scan',
+                description: 'Complete security assessment combining all scan types for thorough coverage.',
                 features: [
-                    "Full network and web application testing",
-                    "Vulnerability validation and verification",
-                    "Cross-tool correlation and validation",
-                    "Complete security posture assessment"
+                    'Full web application testing',
+                    'Network infrastructure assessment',
+                    'Automated exploitation attempts',
+                    'Detailed vulnerability analysis',
+                    'Complete attack surface mapping'
                 ],
-                duration: "30-90 minutes", 
-                tools: "All Available Tools"
+                duration: '45-90 minutes',
+                tools: 'All available tools'
             }
         };
-
-        function updateScanTypeInfo() {
-            const scanType = document.getElementById('scan_type').value;
-            const infoDiv = document.getElementById('scanTypeInfo');
-            const info = scanTypeInfo[scanType];
-            
-            if (info) {
-                infoDiv.innerHTML = `
-                    <div class="info-card">
-                        <h4><i class="fas fa-info-circle"></i> ${info.title}</h4>
-                        <p>${info.description}</p>
-                        <ul>
-                            ${info.features.map(feature => `<li>${feature}</li>`).join('')}
-                        </ul>
-                        <div class="info-stats">
-                            <span class="stat">⏱️ Duration: ${info.duration}</span>
-                            <span class="stat">🛠️ Tools: ${info.tools}</span>
-                        </div>
+        
+        const info = scanInfo[scanType];
+        if (info) {
+            infoDiv.innerHTML = `
+                <div class="info-card">
+                    <h4>${info.title}</h4>
+                    <p>${info.description}</p>
+                    <ul>
+                        ${info.features.map(feature => `<li>${feature}</li>`).join('')}
+                    </ul>
+                    <div class="info-stats">
+                        <div class="stat"><strong>Duration:</strong> ${info.duration}</div>
+                        <div class="stat"><strong>Tools:</strong> ${info.tools}</div>
                     </div>
-                `;
-            }
+                </div>
+            `;
         }
-
-        function updatePresetInfo() {
-            const preset = document.getElementById('scan_preset').value;
-            const helpText = document.getElementById('presetHelp');
-            
-            const presetInfo = {
-                quick: "Fast scan focusing on common vulnerabilities",
-                standard: "Standard scan provides good coverage with reasonable time",
-                thorough: "Deep scan with extensive testing and validation",
-                comprehensive: "Complete assessment with all security checks"
-            };
-            
-            helpText.textContent = presetInfo[preset] || presetInfo.standard;
-        }
-
-        function nextStep() {
-            if (currentStep < totalSteps) {
-                // Validate current step
-                if (validateStep(currentStep)) {
-                    // Hide current step
-                    document.getElementById(`step${currentStep}`).classList.remove('active');
-                    
-                    // Update progress
-                    document.querySelector(`.progress-step[data-step="${currentStep}"]`).classList.add('completed');
-                    document.querySelector(`.progress-step[data-step="${currentStep}"]`).classList.remove('active');
-                    
-                    // Move to next step
-                    currentStep++;
-                    document.getElementById(`step${currentStep}`).classList.add('active');
-                    document.querySelector(`.progress-step[data-step="${currentStep}"]`).classList.add('active');
-                    
-                    // Auto-update scan name
-                    updateScanName();
+    }
+    
+    function updatePresetInfo() {
+        // Add preset info updates if needed
+    }
+    
+    // Auto-update scan name based on target and type
+    function updateScanName() {
+        const target = document.getElementById('target_url').value;
+        const scanType = document.getElementById('scan_type').value;
+        const nameField = document.getElementById('scan_name');
+        
+        if (!nameField.value && target) {
+            let hostname = target;
+            try {
+                if (target.startsWith('http')) {
+                    hostname = new URL(target).hostname;
                 }
+            } catch (e) {
+                // Keep original target if URL parsing fails
             }
+            
+            nameField.value = `${scanType.charAt(0).toUpperCase() + scanType.slice(1)} scan of ${hostname}`;
         }
+    }
 
-        function previousStep() {
-            if (currentStep > 1) {
-                // Hide current step
-                document.getElementById(`step${currentStep}`).classList.remove('active');
-                document.querySelector(`.progress-step[data-step="${currentStep}"]`).classList.remove('active');
-                
-                // Move to previous step
-                currentStep--;
-                document.getElementById(`step${currentStep}`).classList.add('active');
-                document.querySelector(`.progress-step[data-step="${currentStep}"]`).classList.remove('completed');
-                document.querySelector(`.progress-step[data-step="${currentStep}"]`).classList.add('active');
-            }
-        }
-
-        function validateStep(step) {
-            if (step === 1) {
-                const targetUrl = document.getElementById('target_url').value.trim();
-                if (!targetUrl) {
-                    alert('Please enter a target URL or IP address');
-                    return false;
-                }
-                // Basic validation
-                if (!isValidTarget(targetUrl)) {
-                    alert('Please enter a valid URL or IP address');
-                    return false;
-                }
-            }
-            
-            if (step === 3) {
-                const ownershipConsent = document.getElementById('ownershipConsent').checked;
-                const legalConsent = document.getElementById('legalConsent').checked;
-                
-                if (!ownershipConsent || !legalConsent) {
-                    alert('You must agree to both consent requirements before proceeding');
-                    return false;
-                }
-            }
-            
-            return true;
-        }
-
-        function isValidTarget(target) {
-            // Basic validation - you'd want more sophisticated validation in production
-            const urlPattern = /^https?:\/\/.+/;
-            const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-            const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-            
-            return urlPattern.test(target) || ipPattern.test(target) || domainPattern.test(target) || target === 'localhost';
-        }
-
-        function updateScanName() {
-            const target = document.getElementById('target_url').value.trim();
-            const scanType = document.getElementById('scan_type').value;
-            const nameField = document.getElementById('scan_name');
-            
-            if (!nameField.value && target) {
-                let hostname = target;
-                try {
-                    if (target.startsWith('http')) {
-                        hostname = new URL(target).hostname;
-                    }
-                } catch (e) {
-                    // Keep original target if URL parsing fails
-                }
-                
-                nameField.value = `${scanType.charAt(0).toUpperCase() + scanType.slice(1)} scan of ${hostname}`;
-            }
-        }
-
-        // Form submission
-        document.getElementById('newScanForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (!validateStep(3)) {
-                return;
-            }
-            
-            const form = this;
-            const launchButton = document.getElementById('launchButton');
-            
-            // Show loading state
-            form.classList.add('loading');
-            launchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Launching Scan...';
-            launchButton.disabled = true;
-            
-            // Collect form data
-            const formData = {
-                target_url: document.getElementById('target_url').value.trim(),
-                scan_type: document.getElementById('scan_type').value,
-                scan_name: document.getElementById('scan_name').value || null,
-                scan_preset: document.getElementById('scan_preset').value,
-                enable_nmap: document.getElementById('enable_nmap').checked,
-                enable_zap: document.getElementById('enable_zap').checked,
-                enable_metasploit: document.getElementById('enable_metasploit').checked
-            };
-            
-            // Simulate API call (replace with actual endpoint)
-            setTimeout(() => {
-                console.log('Scan data:', formData);
-                alert(`Security scan "${formData.scan_name || 'Unnamed scan'}" has been launched successfully!`);
-                
-                // Reset form or redirect
-                form.reset();
-                currentStep = 1;
-                document.querySelectorAll('.wizard-step').forEach(step => step.classList.remove('active'));
-                document.getElementById('step1').classList.add('active');
-                
-                document.querySelectorAll('.progress-step').forEach(step => {
-                    step.classList.remove('active', 'completed');
-                });
-                document.querySelector('.progress-step[data-step="1"]').classList.add('active');
-                
-                form.classList.remove('loading');
-                launchButton.innerHTML = '<i class="fas fa-rocket"></i> Launch Security Scan';
-                launchButton.disabled = false;
-                
-                updateScanTypeInfo();
-            }, 2000);
-        });
-
-        // Tool option selection
-        document.querySelectorAll('.tool-option').forEach(option => {
-            option.addEventListener('click', function(e) {
-                if (e.target.type !== 'checkbox') {
-                    const checkbox = this.querySelector('input[type="checkbox"]');
-                    checkbox.checked = !checkbox.checked;
-                }
-                
-                this.classList.toggle('selected', this.querySelector('input[type="checkbox"]').checked);
-            });
-        });
-
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        updateScanTypeInfo();
+        
         // Auto-update scan name when target or type changes
         document.getElementById('target_url').addEventListener('blur', updateScanName);
         document.getElementById('scan_type').addEventListener('change', function() {
             updateScanTypeInfo();
             updateScanName();
         });
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            updateScanTypeInfo();
-            updatePresetInfo();
-            
-            // Set initial tool selection states
-            document.querySelectorAll('.tool-option').forEach(option => {
-                const checkbox = option.querySelector('input[type="checkbox"]');
-                option.classList.toggle('selected', checkbox.checked);
-            });
-        });
-
-        // Keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey || e.metaKey) {
-                switch(e.key) {
-                    case 'Enter':
-                        e.preventDefault();
-                        if (currentStep < totalSteps) {
-                            nextStep();
-                        } else {
-                            document.getElementById('newScanForm').submit();
-                        }
-                        break;
-                }
-            }
-        });
-
-        // Target validation preview
-        let validationTimeout;
-        document.getElementById('target_url').addEventListener('input', function() {
-            clearTimeout(validationTimeout);
-            const target = this.value.trim();
-            
-            if (target.length > 3) {
-                validationTimeout = setTimeout(() => {
-                    validateTargetPreview(target);
-                }, 500);
-            }
-        });
-
-        function validateTargetPreview(target) {
-            const targetInput = document.getElementById('target_url');
-            
-            // Remove previous validation classes
-            targetInput.classList.remove('is-valid', 'is-invalid');
-            
-            // Basic format checks
-            let isValid = false;
-            
-            if (target.startsWith('http://') || target.startsWith('https://')) {
-                try {
-                    new URL(target);
-                    isValid = true;
-                } catch (e) {
-                    isValid = false;
-                }
-            } else if (target.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-                // Basic IP format check
-                const parts = target.split('.');
-                isValid = parts.every(part => parseInt(part) >= 0 && parseInt(part) <= 255);
-            } else if (target.match(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
-                isValid = true;
-            } else if (target === 'localhost') {
-                isValid = true;
-            }
-            
-            // Show validation feedback
-            targetInput.classList.add(isValid ? 'is-valid' : 'is-invalid');
-        }
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}
