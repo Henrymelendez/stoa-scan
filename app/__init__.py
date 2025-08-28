@@ -30,6 +30,9 @@ def create_app(config_class=Config):
     from app.main import bp as main_bp
     app.register_blueprint(main_bp)
 
+    from app.scans import bp as scans_bp
+    app.register_blueprint(scans_bp)
+
 
     if not app.debug:
         if app.config['MAIL_SERVER']:
