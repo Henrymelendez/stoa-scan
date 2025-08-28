@@ -407,7 +407,7 @@
                         <a href="{{ url_for('main.index') }}" class="nav-link">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
-                        <a href="{{ url_for('user', username=current_user.username) }}" class="nav-link">
+                        <a href="{{ url_for('main.user', username=current_user.username) }}" class="nav-link">
                             <i class="fas fa-user"></i> Profile
                         </a>
                         <a href="{{ url_for('auth.logout') }}" class="nav-link">

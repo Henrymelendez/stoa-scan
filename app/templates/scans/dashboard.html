@@ -67,7 +67,7 @@
                 <i class="fas fa-clock"></i>
             </div>
             <div class="stat-content">
-                <h3>{{ status_counts.get('queued', 0) + status_counts.get('running', 0) }}</h3>
+                <h3>{{ (status_counts.get('queued', 0) + status_counts.get('running', 0)) }}</h3>
                 <p>Active Scans</p>
                 <div class="stat-breakdown">
                     <span class="status-queued">{{ status_counts.get('queued', 0) }} Queued</span>
@@ -635,7 +635,6 @@
         justify-content: space-between;
     }
 
-    /* Modal Styles */
     .modal {
         position: fixed;
         z-index: 1000;
@@ -687,7 +686,6 @@
         margin-top: 1.5rem;
     }
 
-    /* Responsive */
     @media (max-width: 768px) {
         .stats-grid {
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -717,36 +715,33 @@
 
 {% block extra_js %}
 <script>
-    // Real-time scan status updates
     function updateScanStatus() {
         const runningScans = document.querySelectorAll('.status-running');
         
         runningScans.forEach(statusElement => {
             const row = statusElement.closest('.scan-row');
-            const scanId = row.dataset.scanId;
-            
-            fetch(`/api/scans/${scanId}/status`)
-                .then(response => response.json())
-                .then(data => {
-                    // Update status badge
-                    if (data.status !== 'running') {
-                        location.reload(); // Refresh page to show completed status
-                    } else {
-                        // Update progress bar
-                        const progressFill = row.querySelector('.progress-fill');
-                        if (progressFill) {
-                            progressFill.style.width = `${data.progress}%`;
+            if (row) {
+                const scanId = row.dataset.scanId;
+                
+                fetch('/api/scans/' + scanId + '/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status !== 'running') {
+                            location.reload();
+                        } else {
+                            const progressFill = row.querySelector('.progress-fill');
+                            if (progressFill) {
+                                progressFill.style.width = data.progress + '%';
+                            }
                         }
-                    }
-                })
-                .catch(error => console.error('Error updating scan status:', error));
+                    })
+                    .catch(error => console.error('Error updating scan status:', error));
+            }
         });
     }
 
-    // Update scan statuses every 10 seconds
     setInterval(updateScanStatus, 10000);
 
-    // Quick scan functions
     function startQuickScan() {
         const modal = document.getElementById('quickScanModal');
         if (modal) {
@@ -794,7 +789,6 @@
             return;
         }
         
-        // Disable form
         const submitBtn = event.target.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
@@ -816,7 +810,7 @@
                 closeQuickScanModal();
                 window.location.href = data.redirect_url;
             } else {
-                alert(`Error: ${data.error}`);
+                alert('Error: ' + (data.error || 'Unknown error'));
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             }
@@ -829,17 +823,15 @@
         });
     }
 
-    // Scan management functions
     function cancelScan(scanId) {
         if (!confirm('Are you sure you want to cancel this scan?')) {
             return;
         }
         
-        fetch(`/api/scans/${scanId}/cancel`, {
+        fetch('/api/scans/' + scanId + '/cancel', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-Token': getCsrfToken()
             }
         })
         .then(response => response.json())
@@ -847,7 +839,7 @@
             if (data.success) {
                 location.reload();
             } else {
-                alert(`Error: ${data.error || 'Unknown error occurred'}`);
+                alert('Error: ' + (data.error || 'Unknown error occurred'));
             }
         })
         .catch(error => {
@@ -861,11 +853,8 @@
             return;
         }
         
-        fetch(`/scans/${scanId}/retry`, {
+        fetch('/scans/' + scanId + '/retry', {
             method: 'POST',
-            headers: {
-                'X-CSRF-Token': getCsrfToken()
-            }
         })
         .then(response => {
             if (response.ok) {
@@ -880,18 +869,10 @@
         });
     }
 
-    // Helper function to get CSRF token (if using Flask-WTF)
-    function getCsrfToken() {
-        const token = document.querySelector('meta[name=csrf-token]');
-        return token ? token.getAttribute('content') : '';
-    }
-
     function generateBulkReport() {
-        // Navigate to report generation page
         window.location.href = '{{ url_for("scans.scans_list") }}?action=bulk_report';
     }
 
-    // Close modal when clicking outside
     window.onclick = function(event) {
         const modal = document.getElementById('quickScanModal');
         if (event.target === modal) {
@@ -899,7 +880,6 @@
         }
     }
 
-    // Vulnerability chart (if Chart.js is available)
     {% if total_vulnerabilities > 0 %}
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('vulnerabilityChart');
@@ -907,9 +887,7 @@
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: [
-                        'Critical', 'High', 'Medium', 'Low', 'Info'
-                    ],
+                    labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
                     datasets: [{
                         data: [
                             {{ severity_counts.get('critical', 0) }},
@@ -942,54 +920,44 @@
     });
     {% endif %}
 
-    // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         if (e.ctrlKey || e.metaKey) {
             switch(e.key) {
-                case 'k': // Ctrl+K for quick scan
+                case 'k':
                     e.preventDefault();
                     startQuickScan();
                     break;
-                case 'n': // Ctrl+N for new scan
+                case 'n':
                     e.preventDefault();
                     window.location.href = '{{ url_for("scans.new_scan") }}';
                     break;
-                case 'h': // Ctrl+H for scan history
+                case 'h':
                     e.preventDefault();
                     window.location.href = '{{ url_for("scans.scans_list") }}';
                     break;
             }
         }
         
-        // ESC to close modals
         if (e.key === 'Escape') {
             closeQuickScanModal();
         }
     });
 
-    // Show keyboard shortcuts tooltip
     function showKeyboardShortcuts() {
         alert('Keyboard Shortcuts:\nCtrl+K - Quick Scan\nCtrl+N - New Scan\nCtrl+H - Scan History\nESC - Close Modal');
     }
 
-    // Add help tooltip
     document.addEventListener('DOMContentLoaded', function() {
         const helpBtn = document.createElement('button');
         helpBtn.innerHTML = '<i class="fas fa-question-circle"></i>';
         helpBtn.className = 'btn btn-sm btn-outline help-button';
         helpBtn.title = 'Keyboard Shortcuts';
         helpBtn.onclick = showKeyboardShortcuts;
-        helpBtn.style.position = 'fixed';
-        helpBtn.style.bottom = '20px';
-        helpBtn.style.right = '20px';
-        helpBtn.style.borderRadius = '50%';
-        helpBtn.style.width = '40px';
-        helpBtn.style.height = '40px';
+        helpBtn.style.cssText = 'position: fixed; bottom: 20px; right: 20px; border-radius: 50%; width: 40px; height: 40px;';
         document.body.appendChild(helpBtn);
     });
 </script>
 
-<!-- Load Chart.js for vulnerability distribution chart -->
 {% if total_vulnerabilities > 0 %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 {% endif %}
