@@ -1,0 +1,1210 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <!-- Scan Header -->
+    <div class="scan-header">
+        <div class="scan-title-section">
+            <div class="scan-breadcrumb">
+                <a href="{{ url_for('scans.scans_list') }}">
+                    <i class="fas fa-arrow-left"></i> Back to Scans
+                </a>
+            </div>
+            
+            <h1>{{ scan.scan_name }}</h1>
+            <div class="scan-meta">
+                <span class="status-badge status-{{ scan.status }}">
+                    {% if scan.status == 'running' %}
+                        <i class="fas fa-spinner fa-spin"></i>
+                    {% elif scan.status == 'completed' %}
+                        <i class="fas fa-check"></i>
+                    {% elif scan.status == 'failed' %}
+                        <i class="fas fa-times"></i>
+                    {% elif scan.status == 'queued' %}
+                        <i class="fas fa-clock"></i>
+                    {% endif %}
+                    {{ scan.status.title() }}
+                </span>
+                
+                <span class="scan-type-badge scan-type-{{ scan.scan_type }}">
+                    {{ scan.scan_type.title() }} Scan
+                </span>
+            </div>
+        </div>
+        
+        <div class="scan-actions">
+            {% if scan.status == 'running' %}
+                <button onclick="cancelScan({{ scan.id }})" class="btn btn-danger">
+                    <i class="fas fa-stop"></i> Cancel Scan
+                </button>
+            {% elif scan.status == 'completed' %}
+                <button onclick="generateReport({{ scan.id }})" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Generate Report
+                </button>
+                <button onclick="rerunScan({{ scan.id }})" class="btn btn-secondary">
+                    <i class="fas fa-redo"></i> Run Again
+                </button>
+            {% elif scan.status in ['failed', 'cancelled'] %}
+                <form method="POST" action="{{ url_for('scans.retry_scan', scan_id=scan.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-redo"></i> Retry Scan
+                    </button>
+                </form>
+            {% endif %}
+            
+            <div class="dropdown">
+                <button class="btn btn-outline dropdown-toggle" onclick="toggleDropdown()">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="dropdown-menu" id="scanDropdown">
+                    <a href="#" onclick="exportScanData('json')">
+                        <i class="fas fa-download"></i> Export JSON
+                    </a>
+                    <a href="#" onclick="exportScanData('csv')">
+                        <i class="fas fa-table"></i> Export CSV
+                    </a>
+                    <a href="#" onclick="shareScan()">
+                        <i class="fas fa-share"></i> Share Results
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <form method="POST" action="{{ url_for('scans.delete_scan', scan_id=scan.id) }}" 
+                          onsubmit="return confirm('Are you sure you want to delete this scan? This cannot be undone.');" 
+                          style="display: inline;">
+                        <a href="#" onclick="this.closest('form').submit()" class="text-danger">
+                            <i class="fas fa-trash"></i> Delete Scan
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Overview -->
+    <div class="scan-overview-grid">
+        <div class="overview-card">
+            <div class="overview-icon">
+                <i class="fas fa-bullseye"></i>
+            </div>
+            <div class="overview-content">
+                <h3>Target</h3>
+                <p class="target-url">{{ scan.target_url }}</p>
+                {% if scan.target_ip %}
+                    <small>IP: {{ scan.target_ip }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="overview-card">
+            <div class="overview-icon">
+                <i class="fas fa-stopwatch"></i>
+            </div>
+            <div class="overview-content">
+                <h3>Duration</h3>
+                <p>
+                    {% if scan.duration %}
+                        {{ "%.1f"|format(scan.duration / 60) }} minutes
+                    {% elif scan.status == 'running' %}
+                        <span id="runtimeCounter">Calculating...</span>
+                    {% else %}
+                        Not available
+                    {% endif %}
+                </p>
+                <small>
+                    Started: {{ scan.started_at.strftime('%m/%d/%Y %H:%M') if scan.started_at else 'Not started' }}
+                </small>
+            </div>
+        </div>
+
+        <div class="overview-card">
+            <div class="overview-icon critical">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="overview-content">
+                <h3>Security Score</h3>
+                <p class="security-score">
+                    {% set score = 100 - (scan.high_severity_count * 10 + scan.medium_severity_count * 3 + scan.low_severity_count) %}
+                    {% if score < 0 %}{% set score = 0 %}{% endif %}
+                    {{ score }}/100
+                </p>
+                <div class="score-bar">
+                    <div class="score-fill" style="width: {{ score }}%; background: {% if score >= 80 %}#10b981{% elif score >= 60 %}#f59e0b{% else %}#dc2626{% endif %};"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="overview-card">
+            <div class="overview-icon">
+                <i class="fas fa-tools"></i>
+            </div>
+            <div class="overview-content">
+                <h3>Tools Used</h3>
+                <div class="tools-list">
+                    {% for tool in tool_results %}
+                        <span class="tool-badge tool-{{ tool.status }}">
+                            {{ tool.tool_name.upper() }}
+                        </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Running Scan Progress -->
+    {% if scan.status == 'running' %}
+        <div class="card progress-card">
+            <div class="card-header">
+                <i class="fas fa-spinner fa-spin"></i> Scan in Progress
+            </div>
+            
+            <div class="progress-section">
+                <div class="overall-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="overallProgress" style="width: {{ scan.progress_percentage }}%"></div>
+                    </div>
+                    <span class="progress-text">{{ scan.progress_percentage }}% Complete</span>
+                </div>
+                
+                <div class="tool-progress" id="toolProgress">
+                    {% for tool in tool_results %}
+                        {% if tool.status == 'running' %}
+                            <div class="tool-progress-item">
+                                <span class="tool-name">{{ tool.tool_name.upper() }}</span>
+                                <div class="mini-progress-bar">
+                                    <div class="mini-progress-fill" style="width: 50%"></div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Vulnerability Summary -->
+    {% if vulnerabilities %}
+        <div class="vulnerability-summary-section">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-bug"></i> Vulnerability Summary
+                    <span class="vulnerability-count">{{ vulnerabilities|length }} found</span>
+                </div>
+                
+                <div class="severity-grid">
+                    {% for severity, vulns in vuln_by_severity.items() %}
+                        {% if vulns %}
+                            <div class="severity-card severity-{{ severity }}">
+                                <div class="severity-header">
+                                    <h4>{{ severity.title() }}</h4>
+                                    <span class="count">{{ vulns|length }}</span>
+                                </div>
+                                
+                                <div class="vulnerability-list">
+                                    {% for vuln in vulns[:3] %}
+                                        <div class="vulnerability-item">
+                                            <a href="{{ url_for('scans.vulnerability_detail', scan_id=scan.id, vuln_id=vuln.id) }}">
+                                                <strong>{{ vuln.title }}</strong>
+                                            </a>
+                                            {% if vuln.cve_id %}
+                                                <span class="cve-badge">{{ vuln.cve_id }}</span>
+                                            {% endif %}
+                                            {% if vuln.false_positive %}
+                                                <span class="false-positive-badge">False Positive</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    
+                                    {% if vulns|length > 3 %}
+                                        <div class="more-vulns">
+                                            <a href="#vulnerabilities-section">View {{ vulns|length - 3 }} more...</a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Detailed Vulnerabilities List -->
+    {% if vulnerabilities %}
+        <div class="card" id="vulnerabilities-section">
+            <div class="card-header">
+                <i class="fas fa-list"></i> Detailed Vulnerabilities
+                <div class="header-actions">
+                    <button onclick="toggleFalsePositives()" class="btn btn-sm btn-outline" id="fpToggle">
+                        Hide False Positives
+                    </button>
+                    <select onchange="filterBySeverity(this.value)" class="form-control form-control-sm" style="width: auto; display: inline-block;">
+                        <option value="">All Severities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                        <option value="info">Info</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="vulnerabilities-list">
+                {% for vuln in vulnerabilities %}
+                    <div class="vulnerability-card" data-severity="{{ vuln.severity }}" data-false-positive="{{ vuln.false_positive }}">
+                        <div class="vulnerability-header">
+                            <div class="vulnerability-title">
+                                <h4>
+                                    <a href="{{ url_for('scans.vulnerability_detail', scan_id=scan.id, vuln_id=vuln.id) }}">
+                                        {{ vuln.title }}
+                                    </a>
+                                </h4>
+                                <div class="vulnerability-badges">
+                                    <span class="severity-badge severity-{{ vuln.severity }}">
+                                        {{ vuln.severity.upper() }}
+                                    </span>
+                                    
+                                    <span class="vuln-type-badge">
+                                        {{ vuln.vuln_type.replace('_', ' ').title() }}
+                                    </span>
+                                    
+                                    {% if vuln.cve_id %}
+                                        <span class="cve-badge">{{ vuln.cve_id }}</span>
+                                    {% endif %}
+                                    
+                                    {% if vuln.cvss_score %}
+                                        <span class="cvss-badge">
+                                            CVSS {{ vuln.cvss_score }}
+                                        </span>
+                                    {% endif %}
+                                    
+                                    {% if vuln.false_positive %}
+                                        <span class="false-positive-badge">False Positive</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="vulnerability-actions">
+                                <button onclick="toggleFalsePositive({{ vuln.id }})" 
+                                        class="btn btn-sm {% if vuln.false_positive %}btn-success{% else %}btn-outline{% endif %}"
+                                        title="Mark as {{ 'Valid' if vuln.false_positive else 'False Positive' }}">
+                                    <i class="fas fa-{% if vuln.false_positive %}check{% else %}times{% endif %}"></i>
+                                </button>
+                                
+                                <button onclick="copyVulnUrl({{ vuln.id }})" 
+                                        class="btn btn-sm btn-outline" title="Copy URL">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="vulnerability-content">
+                            {% if vuln.description %}
+                                <p class="vulnerability-description">{{ vuln.description }}</p>
+                            {% endif %}
+                            
+                            <div class="vulnerability-details">
+                                {% if vuln.affected_url %}
+                                    <div class="detail-item">
+                                        <strong>Affected URL:</strong>
+                                        <code>{{ vuln.affected_url }}</code>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if vuln.affected_parameter %}
+                                    <div class="detail-item">
+                                        <strong>Parameter:</strong>
+                                        <code>{{ vuln.affected_parameter }}</code>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if vuln.remediation %}
+                                    <div class="detail-item remediation">
+                                        <strong>Remediation:</strong>
+                                        <p>{{ vuln.remediation }}</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <!-- No Vulnerabilities Found -->
+        <div class="card">
+            <div class="empty-state">
+                <i class="fas fa-shield-check" style="font-size: 3rem; color: #10b981; margin-bottom: 1rem;"></i>
+                <h3>No Vulnerabilities Found</h3>
+                <p>Great news! No security vulnerabilities were detected in this scan.</p>
+                {% if scan.status == 'completed' %}
+                    <small class="text-muted">
+                        This doesn't guarantee the target is 100% secure. Consider running more comprehensive scans.
+                    </small>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Tool Results -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-tools"></i> Tool Results
+        </div>
+        
+        <div class="tool-results-list">
+            {% for tool in tool_results %}
+                <div class="tool-result-card">
+                    <div class="tool-result-header">
+                        <div class="tool-info">
+                            <h4>{{ tool.tool_name.upper() }}</h4>
+                            <span class="status-badge status-{{ tool.status }}">
+                                {{ tool.status.title() }}
+                            </span>
+                        </div>
+                        
+                        <div class="tool-timing">
+                            {% if tool.duration %}
+                                <span class="duration">{{ "%.1f"|format(tool.duration / 60) }}m</span>
+                            {% endif %}
+                            {% if tool.started_at %}
+                                <small>{{ tool.started_at.strftime('%H:%M:%S') }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if tool.error_message %}
+                        <div class="tool-error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            {{ tool.error_message }}
+                        </div>
+                    {% endif %}
+                    
+                    {% if tool.raw_output and tool.status == 'completed' %}
+                        <div class="tool-output-preview">
+                            <button onclick="toggleToolOutput({{ tool.id }})" class="btn btn-sm btn-outline">
+                                <i class="fas fa-code"></i> View Raw Output
+                            </button>
+                            
+                            <div class="tool-output-content" id="toolOutput{{ tool.id }}" style="display: none;">
+                                <pre><code>{{ tool.raw_output[:1000] }}{% if tool.raw_output|length > 1000 %}...{% endif %}</code></pre>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Scan Configuration -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-cog"></i> Scan Configuration
+        </div>
+        
+        <div class="config-details">
+            {% if scan.scan_config %}
+                {% set config = scan.scan_config | from_json %}
+                <div class="config-grid">
+                    {% for key, value in config.items() %}
+                        <div class="config-item">
+                            <strong>{{ key.replace('_', ' ').title() }}:</strong>
+                            <span>{{ value }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">No configuration details available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <style>
+        .scan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .scan-breadcrumb {
+            margin-bottom: 0.5rem;
+        }
+
+        .scan-breadcrumb a {
+            color: #6c757d;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .scan-breadcrumb a:hover {
+            color: #dc2626;
+        }
+
+        .scan-title-section h1 {
+            margin: 0;
+            color: var(--text-dark);
+            font-size: 1.8rem;
+        }
+
+        .scan-meta {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .scan-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .scan-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .overview-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .overview-icon {
+            font-size: 1.5rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-gradient);
+            color: white;
+        }
+
+        .overview-content h3 {
+            margin: 0 0 0.25rem 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .overview-content p {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .target-url {
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            background: #f8fafc;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .security-score {
+            font-size: 2rem !important;
+            font-weight: 700 !important;
+        }
+
+        .score-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .score-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .tools-list {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        .tool-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .tool-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .tool-running {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .tool-failed {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .progress-card {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .progress-section {
+            padding: 1rem 0;
+        }
+
+        .overall-progress {
+            margin-bottom: 1rem;
+        }
+
+        .progress-text {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-left: 1rem;
+        }
+
+        .tool-progress {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .tool-progress-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .tool-name {
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        .mini-progress-bar {
+            flex: 1;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            transition: width 0.3s ease;
+        }
+
+        .vulnerability-summary-section {
+            margin-bottom: 2rem;
+        }
+
+        .vulnerability-count {
+            background: #dc2626;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .severity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            padding: 1rem 0;
+        }
+
+        .severity-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .severity-critical {
+            border-left: 4px solid #dc2626;
+        }
+
+        .severity-high {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .severity-medium {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .severity-low {
+            border-left: 4px solid #6b7280;
+        }
+
+        .severity-info {
+            border-left: 4px solid #9ca3af;
+        }
+
+        .severity-header {
+            background: #f8fafc;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .severity-header h4 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .severity-header .count {
+            background: var(--text-dark);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .vulnerability-list {
+            padding: 1rem;
+        }
+
+        .vulnerability-item {
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .vulnerability-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .vulnerability-item a {
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .vulnerability-item a:hover {
+            color: #dc2626;
+        }
+
+        .cve-badge {
+            background: #1f2937;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .false-positive-badge {
+            background: #f3f4f6;
+            color: #6b7280;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .more-vulns a {
+            color: #3b82f6;
+            font-size: 0.8rem;
+            text-decoration: none;
+        }
+
+        .vulnerabilities-list {
+            padding: 1rem 0;
+        }
+
+        .vulnerability-card {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            transition: var(--transition);
+        }
+
+        .vulnerability-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-color: #dc2626;
+        }
+
+        .vulnerability-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .vulnerability-title h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+
+        .vulnerability-title h4 a {
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+
+        .vulnerability-title h4 a:hover {
+            color: #dc2626;
+        }
+
+        .vulnerability-badges {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        .vulnerability-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .vulnerability-content {
+            color: var(--text-muted);
+        }
+
+        .vulnerability-description {
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .vulnerability-details {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .detail-item strong {
+            color: var(--text-dark);
+            margin-right: 0.5rem;
+        }
+
+        .detail-item code {
+            background: #f8fafc;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+
+        .remediation {
+            background: #f0fdf4;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border-left: 3px solid #10b981;
+        }
+
+        .tool-results-list {
+            padding: 1rem 0;
+        }
+
+        .tool-result-card {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .tool-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .tool-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tool-info h4 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .tool-timing {
+            text-align: right;
+        }
+
+        .duration {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .tool-error {
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border-left: 3px solid #dc2626;
+            margin-top: 0.5rem;
+        }
+
+        .tool-output-preview {
+            margin-top: 0.5rem;
+        }
+
+        .tool-output-content {
+            margin-top: 0.5rem;
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        .tool-output-content pre {
+            margin: 0;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .config-details {
+            padding: 1rem 0;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .config-item {
+            padding: 0.5rem;
+            background: #f8fafc;
+            border-radius: 6px;
+        }
+
+        .config-item strong {
+            display: block;
+            color: var(--text-dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-toggle {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            min-width: 180px;
+            z-index: 100;
+            display: none;
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 0.5rem 1rem;
+            color: var(--text-dark);
+            text-decoration: none;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .dropdown-menu a:hover {
+            background: #f8fafc;
+            color: #dc2626;
+        }
+
+        .dropdown-menu a:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 0.25rem 0;
+        }
+
+        .text-danger {
+            color: #dc2626 !important;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .scan-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .scan-actions {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .scan-overview-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .severity-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .vulnerability-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+
+    <script>
+        // Real-time updates for running scans
+        {% if scan.status == 'running' %}
+        function updateScanProgress() {
+            fetch(`/api/scans/{{ scan.id }}/status`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update overall progress
+                    const progressFill = document.getElementById('overallProgress');
+                    if (progressFill) {
+                        progressFill.style.width = `${data.progress}%`;
+                    }
+                    
+                    // Update runtime counter
+                    const runtimeCounter = document.getElementById('runtimeCounter');
+                    if (runtimeCounter && data.started_at) {
+                        const startTime = new Date(data.started_at);
+                        const now = new Date();
+                        const runtime = Math.floor((now - startTime) / 1000 / 60);
+                        runtimeCounter.textContent = `${runtime} minutes`;
+                    }
+                    
+                    // Reload page if scan completed
+                    if (data.status !== 'running') {
+                        location.reload();
+                    }
+                })
+                .catch(error => console.error('Error updating progress:', error));
+        }
+
+        // Update every 5 seconds
+        setInterval(updateScanProgress, 5000);
+        {% endif %}
+
+        // Dropdown menu toggle
+        let dropdownOpen = false;
+        function toggleDropdown() {
+            const dropdown = document.getElementById('scanDropdown');
+            dropdownOpen = !dropdownOpen;
+            dropdown.style.display = dropdownOpen ? 'block' : 'none';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.dropdown')) {
+                document.getElementById('scanDropdown').style.display = 'none';
+                dropdownOpen = false;
+            }
+        });
+
+        // Vulnerability management functions
+        function toggleFalsePositive(vulnId) {
+            fetch(`/scans/{{ scan.id }}/vulnerability/${vulnId}/false-positive`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling false positive:', error);
+                alert('Error updating vulnerability status.');
+            });
+        }
+
+        function copyVulnUrl(vulnId) {
+            const url = `${window.location.origin}{{ url_for('scans.vulnerability_detail', scan_id=scan.id, vuln_id=0) }}`.replace('0', vulnId);
+            navigator.clipboard.writeText(url).then(() => {
+                // Show brief feedback
+                const btn = event.target.closest('button');
+                const originalIcon = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    btn.innerHTML = originalIcon;
+                }, 1000);
+            });
+        }
+
+        // Tool output toggle
+        function toggleToolOutput(toolId) {
+            const output = document.getElementById(`toolOutput${toolId}`);
+            const button = event.target;
+            
+            if (output.style.display === 'none') {
+                output.style.display = 'block';
+                button.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Output';
+            } else {
+                output.style.display = 'none';
+                button.innerHTML = '<i class="fas fa-code"></i> View Raw Output';
+            }
+        }
+
+        // Filtering functions
+        let showFalsePositives = true;
+        function toggleFalsePositives() {
+            showFalsePositives = !showFalsePositives;
+            const fpToggle = document.getElementById('fpToggle');
+            const vulnerabilityCards = document.querySelectorAll('.vulnerability-card');
+            
+            vulnerabilityCards.forEach(card => {
+                const isFalsePositive = card.dataset.falsePositive === 'True';
+                if (isFalsePositive && !showFalsePositives) {
+                    card.style.display = 'none';
+                } else {
+                    card.style.display = 'block';
+                }
+            });
+            
+            fpToggle.textContent = showFalsePositives ? 'Hide False Positives' : 'Show False Positives';
+        }
+
+        function filterBySeverity(severity) {
+            const vulnerabilityCards = document.querySelectorAll('.vulnerability-card');
+            
+            vulnerabilityCards.forEach(card => {
+                const cardSeverity = card.dataset.severity;
+                if (!severity || cardSeverity === severity) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Scan management functions
+        function cancelScan(scanId) {
+            if (!confirm('Are you sure you want to cancel this scan?')) {
+                return;
+            }
+            
+            fetch(`/api/scans/${scanId}/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error cancelling scan:', error);
+                alert('Error cancelling scan. Please try again.');
+            });
+        }
+
+        function rerunScan(scanId) {
+            if (!confirm('This will create a new scan with the same configuration. Continue?')) {
+                return;
+            }
+            
+            // Navigate to new scan page with pre-filled data
+            const params = new URLSearchParams({
+                template: scanId,
+                target: '{{ scan.target_url }}',
+                type: '{{ scan.scan_type }}'
+            });
+            
+            window.location.href = `{{ url_for('scans.new_scan') }}?${params.toString()}`;
+        }
+
+        function generateReport(scanId) {
+            // Show report generation options
+            const formats = ['PDF', 'HTML', 'JSON', 'CSV'];
+            const format = prompt(`Generate report in which format?\n\n${formats.join('\n')}`);
+            
+            if (format && formats.includes(format.toUpperCase())) {
+                window.location.href = `/scans/${scanId}/export?format=${format.toLowerCase()}`;
+            }
+        }
+
+        function exportScanData(format) {
+            window.location.href = `/scans/{{ scan.id }}/export?format=${format}`;
+        }
+
+        function shareScan() {
+            const shareUrl = `${window.location.origin}{{ url_for('scans.scan_detail', scan_id=scan.id) }}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: '{{ scan.scan_name }}',
+                    text: `Security scan results for {{ scan.target_url }}`,
+                    url: shareUrl
+                });
+            } else {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    alert('Scan URL copied to clipboard!');
+                });
+            }
+        }
+
+        // Auto-refresh for running scans
+        {% if scan.status == 'running' %}
+        // Refresh page every 30 seconds for running scans
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+        {% endif %}
+
+        // Initialize tooltips and interactive elements
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add tooltips to buttons
+            const tooltipElements = document.querySelectorAll('[title]');
+            tooltipElements.forEach(el => {
+                el.addEventListener('mouseenter', function() {
+                    // Custom tooltip implementation could go here
+                });
+            });
+            
+            // Hide false positives by default if there are many vulnerabilities
+            {% if vulnerabilities|length > 10 %}
+                toggleFalsePositives();
+            {% endif %}
+        });
+    </script>
+{% endblock %}

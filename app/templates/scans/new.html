@@ -1,0 +1,1079 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="scan-wizard-container">
+        <div class="wizard-header">
+            <h1><i class="fas fa-plus-circle"></i> Create New Security Scan</h1>
+            <p>Configure and launch a comprehensive security assessment</p>
+        </div>
+
+        <div class="wizard-content">
+            <form action="" method="post" id="newScanForm" novalidate>
+                {{ form.hidden_tag() }}
+                
+                <!-- Step 1: Target Configuration -->
+                <div class="wizard-step active" id="step1">
+                    <h2><i class="fas fa-bullseye"></i> Target Configuration</h2>
+                    
+                    <div class="form-row">
+                        <div class="form-group col-md-8">
+                            {{ form.target_url.label(class="form-label") }}
+                            {{ form.target_url(class="form-control" + (" is-invalid" if form.target_url.errors else "")) }}
+                            {% for error in form.target_url.errors %}
+                                <span class="error-message"><i class="fas fa-exclamation-circle"></i> {{ error }}</span>
+                            {% endfor %}
+                            <small class="form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Examples: https://example.com, 192.168.1.100, subdomain.company.com
+                            </small>
+                        </div>
+                        
+                        <div class="form-group col-md-4">
+                            {{ form.scan_type.label(class="form-label") }}
+                            {{ form.scan_type(class="form-control", onchange="updateScanTypeInfo()") }}
+                            {% for error in form.scan_type.errors %}
+                                <span class="error-message">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.scan_name.label(class="form-label") }}
+                        {{ form.scan_name(class="form-control" + (" is-invalid" if form.scan_name.errors else "")) }}
+                        {% for error in form.scan_name.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                        <small class="form-help">Leave blank for auto-generated name</small>
+                    </div>
+                    
+                    <!-- Scan Type Information -->
+                    <div class="scan-type-info" id="scanTypeInfo">
+                        <div class="info-card" id="webInfo">
+                            <h4><i class="fas fa-globe"></i> Web Application Scan</h4>
+                            <p>Comprehensive security testing of web applications including:</p>
+                            <ul>
+                                <li>SQL injection and XSS vulnerability detection</li>
+                                <li>Authentication and session management testing</li>
+                                <li>SSL/TLS configuration analysis</li>
+                                <li>Security header validation</li>
+                            </ul>
+                            <div class="info-stats">
+                                <span class="stat">⏱️ Duration: 10-30 minutes</span>
+                                <span class="stat">🛡️ Tools: ZAP + Nmap</span>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card" id="networkInfo" style="display: none;">
+                            <h4><i class="fas fa-network-wired"></i> Network Infrastructure Scan</h4>
+                            <p>Network security assessment including:</p>
+                            <ul>
+                                <li>Port scanning and service enumeration</li>
+                                <li>Operating system fingerprinting</li>
+                                <li>Network service version detection</li>
+                                <li>Open port security analysis</li>
+                            </ul>
+                            <div class="info-stats">
+                                <span class="stat">⏱️ Duration: 5-20 minutes</span>
+                                <span class="stat">🛡️ Tools: Nmap</span>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card" id="exploitInfo" style="display: none;">
+                            <h4><i class="fas fa-bug"></i> Exploit Verification Scan</h4>
+                            <p>Safe exploitation testing and vulnerability validation:</p>
+                            <ul>
+                                <li>Known vulnerability verification</li>
+                                <li>Service-specific exploit checks</li>
+                                <li>Configuration weakness testing</li>
+                                <li>Proof-of-concept validation</li>
+                            </ul>
+                            <div class="info-stats">
+                                <span class="stat">⏱️ Duration: 10-25 minutes</span>
+                                <span class="stat">🛡️ Tools: Metasploit (Safe Mode)</span>
+                            </div>
+                            <div class="warning-box">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Important:</strong> Only scan targets you own or have explicit permission to test.
+                            </div>
+                        </div>
+                        
+                        <div class="info-card" id="comprehensiveInfo" style="display: none;">
+                            <h4><i class="fas fa-shield-alt"></i> Comprehensive Multi-Tool Scan</h4>
+                            <p>Complete security assessment using all available tools:</p>
+                            <ul>
+                                <li>Full network and web application testing</li>
+                                <li>Vulnerability validation and verification</li>
+                                <li>Cross-tool correlation and validation</li>
+                                <li>Complete security posture assessment</li>
+                            </ul>
+                            <div class="info-stats">
+                                <span class="stat">⏱️ Duration: 20-60 minutes</span>
+                                <span class="stat">🛡️ Tools: All Available</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-navigation">
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">
+                            Next: Scan Configuration <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Scan Configuration -->
+                <div class="wizard-step" id="step2">
+                    <h2><i class="fas fa-sliders-h"></i> Scan Configuration</h2>
+                    
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            {{ form.scan_preset.label(class="form-label") }}
+                            {{ form.scan_preset(class="form-control", onchange="updatePresetInfo()") }}
+                            <small class="form-help" id="presetHelp">
+                                Standard scan provides good coverage with reasonable time
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Tool Selection (for comprehensive scans) -->
+                    <div class="tool-selection" id="toolSelection">
+                        <h3>Tool Selection</h3>
+                        <div class="tools-grid">
+                            <div class="tool-option">
+                                {{ form.enable_nmap() }}
+                                {{ form.enable_nmap.label(class="tool-label") }}
+                                <div class="tool-description">
+                                    Network discovery and port scanning
+                                </div>
+                            </div>
+                            
+                            <div class="tool-option">
+                                {{ form.enable_zap() }}
+                                {{ form.enable_zap.label(class="tool-label") }}
+                                <div class="tool-description">
+                                    Web application vulnerability testing
+                                </div>
+                            </div>
+                            
+                            <div class="tool-option">
+                                {{ form.enable_metasploit() }}
+                                {{ form.enable_metasploit.label(class="tool-label") }}
+                                <div class="tool-description">
+                                    Exploit verification and validation
+                                </div>
+                                {% if form.enable_metasploit.data %}
+                                    <div class="tool-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Requires target authorization
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-navigation">
+                        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep()">
+                            Next: Review & Launch <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Review and Launch -->
+                <div class="wizard-step" id="step3">
+                    <h2><i class="fas fa-rocket"></i> Review & Launch</h2>
+                    
+                    <div class="review-section">
+                        <div class="review-card">
+                            <h3>Scan Summary</h3>
+                            
+                            <div class="review-details">
+                                <div class="review-item">
+                                    <strong>Target:</strong>
+                                    <span id="reviewTarget">-</span>
+                                </div>
+                                
+                                <div class="review-item">
+                                    <strong>Scan Type:</strong>
+                                    <span id="reviewType">-</span>
+                                </div>
+                                
+                                <div class="review-item">
+                                    <strong>Intensity:</strong>
+                                    <span id="reviewPreset">-</span>
+                                </div>
+                                
+                                <div class="review-item">
+                                    <strong>Tools:</strong>
+                                    <span id="reviewTools">-</span>
+                                </div>
+                                
+                                <div class="review-item">
+                                    <strong>Estimated Duration:</strong>
+                                    <span id="reviewDuration">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Legal Consent (for exploit scans) -->
+                        <div class="consent-section" id="consentSection" style="display: none;">
+                            <div class="consent-card">
+                                <h3><i class="fas fa-gavel"></i> Legal Consent Required</h3>
+                                <div class="consent-text">
+                                    <p><strong>IMPORTANT:</strong> By proceeding with this scan, you confirm that:</p>
+                                    <ul>
+                                        <li>You own the target system OR have explicit written authorization</li>
+                                        <li>You will comply with all applicable laws and regulations</li>
+                                        <li>You will not use findings for malicious purposes</li>
+                                        <li>You accept full responsibility for the scanning activity</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="consent-checkboxes">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="ownershipConsent" required>
+                                        I own this target or have explicit authorization to scan it
+                                    </label>
+                                    
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="legalConsent" required>
+                                        I understand the legal implications and accept full responsibility
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-navigation">
+                        <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <button type="submit" class="btn btn-success launch-button" id="launchButton">
+                            <i class="fas fa-rocket"></i> Launch Scan
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Progress Indicator -->
+        <div class="wizard-progress">
+            <div class="progress-step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-label">Target</div>
+            </div>
+            <div class="progress-connector"></div>
+            <div class="progress-step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-label">Configure</div>
+            </div>
+            <div class="progress-connector"></div>
+            <div class="progress-step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-label">Launch</div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .scan-wizard-container {
+            max-width: 900px;
+            margin: 2rem auto;
+        }
+
+        .wizard-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .wizard-header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .wizard-header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .wizard-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+
+        .wizard-step {
+            padding: 2rem;
+            display: none;
+            min-height: 500px;
+        }
+
+        .wizard-step.active {
+            display: block;
+        }
+
+        .wizard-step h2 {
+            margin-bottom: 1.5rem;
+            color: var(--text-dark);
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            flex: 1;
+            margin-bottom: 1.5rem;
+        }
+
+        .col-md-4 {
+            flex: 0 0 33.333333%;
+        }
+
+        .col-md-6 {
+            flex: 0 0 50%;
+        }
+
+        .col-md-8 {
+            flex: 0 0 66.666667%;
+        }
+
+        .form-help {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            display: block;
+        }
+
+        .scan-type-info {
+            margin: 2rem 0;
+        }
+
+        .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-card h4 {
+            margin: 0 0 1rem 0;
+            color: var(--text-dark);
+        }
+
+        .info-card ul {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .info-card li {
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .info-stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .stat {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            color: #92400e;
+        }
+
+        .tool-selection {
+            margin: 2rem 0;
+        }
+
+        .tool-selection h3 {
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .tool-option {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .tool-option:hover {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+
+        .tool-option input[type="checkbox"] {
+            margin-right: 0.5rem;
+            transform: scale(1.2);
+        }
+
+        .tool-label {
+            font-weight: 600;
+            color: var(--text-dark);
+            cursor: pointer;
+        }
+
+        .tool-description {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .tool-warning {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .review-section {
+            margin: 1rem 0;
+        }
+
+        .review-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .review-card h3 {
+            margin: 0 0 1rem 0;
+            color: var(--text-dark);
+        }
+
+        .review-details {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .review-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .consent-section {
+            margin: 2rem 0;
+        }
+
+        .consent-card {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .consent-card h3 {
+            margin: 0 0 1rem 0;
+            color: #92400e;
+        }
+
+        .consent-text {
+            margin-bottom: 1.5rem;
+        }
+
+        .consent-text ul {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .consent-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            color: #92400e;
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
+        .wizard-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 2rem;
+        }
+
+        .wizard-navigation button:only-child {
+            margin-left: auto;
+        }
+
+        .launch-button {
+            font-size: 1.1rem;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+        }
+
+        .wizard-progress {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 80px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .progress-step.active .step-number {
+            background: var(--accent-gradient);
+            color: white;
+        }
+
+        .progress-step.completed .step-number {
+            background: #10b981;
+            color: white;
+        }
+
+        .step-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .progress-step.active .step-label {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .progress-connector {
+            flex: 1;
+            height: 2px;
+            background: #e5e7eb;
+            margin: 0 1rem;
+            position: relative;
+        }
+
+        .progress-connector.completed {
+            background: #10b981;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+            }
+
+            .col-md-4, .col-md-6, .col-md-8 {
+                flex: 1 1 100%;
+            }
+
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .wizard-navigation {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .info-stats {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .wizard-progress {
+                padding: 0.5rem;
+            }
+
+            .progress-step {
+                min-width: 60px;
+            }
+
+            .step-number {
+                width: 30px;
+                height: 30px;
+                font-size: 0.9rem;
+            }
+
+            .step-label {
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .loading .launch-button {
+            position: relative;
+        }
+
+        .loading .launch-button:after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin-left: -10px;
+            margin-top: -10px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: button-loading-spinner 1s ease infinite;
+        }
+
+        @keyframes button-loading-spinner {
+            from {
+                transform: rotate(0turn);
+            }
+            to {
+                transform: rotate(1turn);
+            }
+        }
+    </style>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 3;
+
+        // Step navigation
+        function nextStep() {
+            if (validateCurrentStep()) {
+                if (currentStep < totalSteps) {
+                    // Hide current step
+                    document.getElementById(`step${currentStep}`).classList.remove('active');
+                    document.querySelector(`[data-step="${currentStep}"]`).classList.add('completed');
+                    
+                    // Show next step
+                    currentStep++;
+                    document.getElementById(`step${currentStep}`).classList.add('active');
+                    document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
+                    
+                    // Update progress connectors
+                    const connectors = document.querySelectorAll('.progress-connector');
+                    if (connectors[currentStep - 2]) {
+                        connectors[currentStep - 2].classList.add('completed');
+                    }
+                    
+                    // Update review section if on final step
+                    if (currentStep === 3) {
+                        updateReviewSection();
+                    }
+                }
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 1) {
+                // Hide current step
+                document.getElementById(`step${currentStep}`).classList.remove('active');
+                document.querySelector(`[data-step="${currentStep}"]`).classList.remove('active');
+                
+                // Show previous step
+                currentStep--;
+                document.getElementById(`step${currentStep}`).classList.add('active');
+                document.querySelector(`[data-step="${currentStep + 1}"]`).classList.remove('completed');
+                
+                // Update progress connectors
+                const connectors = document.querySelectorAll('.progress-connector');
+                if (connectors[currentStep - 1]) {
+                    connectors[currentStep - 1].classList.remove('completed');
+                }
+            }
+        }
+
+        function validateCurrentStep() {
+            if (currentStep === 1) {
+                // Validate target URL
+                const targetInput = document.getElementById('target_url');
+                if (!targetInput.value.trim()) {
+                    alert('Please enter a target URL or IP address');
+                    targetInput.focus();
+                    return false;
+                }
+                
+                // Basic format validation
+                const target = targetInput.value.trim();
+                if (!target.match(/^(https?:\/\/|[0-9.]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/) && target !== 'localhost') {
+                    alert('Please enter a valid URL or IP address');
+                    targetInput.focus();
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            if (currentStep === 2) {
+                // Validate tool selection for comprehensive scans
+                const scanType = document.getElementById('scan_type').value;
+                if (scanType === 'comprehensive') {
+                    const nmapEnabled = document.getElementById('enable_nmap').checked;
+                    const zapEnabled = document.getElementById('enable_zap').checked;
+                    const msfEnabled = document.getElementById('enable_metasploit').checked;
+                    
+                    if (!nmapEnabled && !zapEnabled && !msfEnabled) {
+                        alert('Please select at least one tool for comprehensive scanning');
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+            
+            if (currentStep === 3) {
+                // Validate consent for exploit scans
+                const scanType = document.getElementById('scan_type').value;
+                const msfEnabled = document.getElementById('enable_metasploit').checked;
+                
+                if (scanType === 'exploit' || msfEnabled) {
+                    const ownershipConsent = document.getElementById('ownershipConsent');
+                    const legalConsent = document.getElementById('legalConsent');
+                    
+                    if (ownershipConsent && !ownershipConsent.checked) {
+                        alert('You must confirm ownership or authorization of the target');
+                        return false;
+                    }
+                    
+                    if (legalConsent && !legalConsent.checked) {
+                        alert('You must acknowledge the legal responsibilities');
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+            
+            return true;
+        }
+
+        // Update scan type information
+        function updateScanTypeInfo() {
+            const scanType = document.getElementById('scan_type').value;
+            const infoCards = document.querySelectorAll('.info-card');
+            
+            // Hide all info cards
+            infoCards.forEach(card => card.style.display = 'none');
+            
+            // Show relevant info card
+            const targetCard = document.getElementById(`${scanType}Info`);
+            if (targetCard) {
+                targetCard.style.display = 'block';
+            }
+            
+            // Update tool selection visibility
+            const toolSelection = document.getElementById('toolSelection');
+            if (scanType === 'comprehensive') {
+                toolSelection.style.display = 'block';
+            } else {
+                toolSelection.style.display = 'none';
+                // Auto-configure tools based on scan type
+                document.getElementById('enable_nmap').checked = ['network', 'comprehensive'].includes(scanType);
+                document.getElementById('enable_zap').checked = ['web', 'comprehensive'].includes(scanType);
+                document.getElementById('enable_metasploit').checked = scanType === 'exploit';
+            }
+        }
+
+        // Update preset information
+        function updatePresetInfo() {
+            const preset = document.getElementById('scan_preset').value;
+            const helpText = document.getElementById('presetHelp');
+            
+            const presetInfo = {
+                'quick': 'Fast scan with basic checks (2-5 minutes)',
+                'standard': 'Balanced scan with good coverage (10-20 minutes)',
+                'thorough': 'Comprehensive scan with deep analysis (30+ minutes)'
+            };
+            
+            helpText.textContent = presetInfo[preset] || 'Standard scan configuration';
+        }
+
+        // Update review section
+        function updateReviewSection() {
+            const target = document.getElementById('target_url').value;
+            const scanType = document.getElementById('scan_type').value;
+            const preset = document.getElementById('scan_preset').value;
+            
+            document.getElementById('reviewTarget').textContent = target;
+            document.getElementById('reviewType').textContent = scanType.charAt(0).toUpperCase() + scanType.slice(1);
+            document.getElementById('reviewPreset').textContent = preset.charAt(0).toUpperCase() + preset.slice(1);
+            
+            // Update tools list
+            const tools = [];
+            if (document.getElementById('enable_nmap').checked) tools.push('Nmap');
+            if (document.getElementById('enable_zap').checked) tools.push('ZAP');
+            if (document.getElementById('enable_metasploit').checked) tools.push('Metasploit');
+            
+            document.getElementById('reviewTools').textContent = tools.join(', ') || 'Auto-selected';
+            
+            // Estimate duration
+            let duration = 'Unknown';
+            if (preset === 'quick') duration = '2-5 minutes';
+            else if (preset === 'standard') duration = '10-20 minutes';
+            else if (preset === 'thorough') duration = '30-60 minutes';
+            
+            if (tools.length > 1) {
+                duration += ' (may run concurrently)';
+            }
+            
+            document.getElementById('reviewDuration').textContent = duration;
+            
+            // Show/hide consent section
+            const consentSection = document.getElementById('consentSection');
+            const msfEnabled = document.getElementById('enable_metasploit').checked;
+            if (scanType === 'exploit' || msfEnabled) {
+                consentSection.style.display = 'block';
+            } else {
+                consentSection.style.display = 'none';
+            }
+        }
+
+        // Form submission
+        document.getElementById('newScanForm').addEventListener('submit', function(e) {
+            if (!validateCurrentStep()) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Show loading state
+            const form = e.target;
+            const launchButton = document.getElementById('launchButton');
+            
+            form.classList.add('loading');
+            launchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Launching Scan...';
+            launchButton.disabled = true;
+            
+            // Allow form to submit normally
+        });
+
+        // Auto-update scan name based on target and type
+        function updateScanName() {
+            const target = document.getElementById('target_url').value;
+            const scanType = document.getElementById('scan_type').value;
+            const nameField = document.getElementById('scan_name');
+            
+            if (!nameField.value && target) {
+                let hostname = target;
+                try {
+                    if (target.startsWith('http')) {
+                        hostname = new URL(target).hostname;
+                    }
+                } catch (e) {
+                    // Keep original target if URL parsing fails
+                }
+                
+                nameField.value = `${scanType.charAt(0).toUpperCase() + scanType.slice(1)} scan of ${hostname}`;
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize scan type info
+            updateScanTypeInfo();
+            updatePresetInfo();
+            
+            // Auto-update scan name when target or type changes
+            document.getElementById('target_url').addEventListener('blur', updateScanName);
+            document.getElementById('scan_type').addEventListener('change', function() {
+                updateScanTypeInfo();
+                updateScanName();
+            });
+            
+            // Pre-fill form if template parameter is provided
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('template')) {
+                // Pre-fill from template scan
+                const target = urlParams.get('target');
+                const type = urlParams.get('type');
+                
+                if (target) document.getElementById('target_url').value = target;
+                if (type) document.getElementById('scan_type').value = type;
+                
+                updateScanTypeInfo();
+                updateScanName();
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'Enter':
+                        e.preventDefault();
+                        if (currentStep < totalSteps) {
+                            nextStep();
+                        } else {
+                            document.getElementById('newScanForm').submit();
+                        }
+                        break;
+                }
+            }
+        });
+
+        // Target validation preview
+        let validationTimeout;
+        document.getElementById('target_url').addEventListener('input', function() {
+            clearTimeout(validationTimeout);
+            const target = this.value.trim();
+            
+            if (target.length > 3) {
+                validationTimeout = setTimeout(() => {
+                    validateTargetPreview(target);
+                }, 500);
+            }
+        });
+
+        function validateTargetPreview(target) {
+            // Basic client-side validation feedback
+            const targetInput = document.getElementById('target_url');
+            
+            // Remove previous validation classes
+            targetInput.classList.remove('is-valid', 'is-invalid');
+            
+            // Basic format checks
+            let isValid = false;
+            let feedback = '';
+            
+            if (target.startsWith('http://') || target.startsWith('https://')) {
+                try {
+                    new URL(target);
+                    isValid = true;
+                    feedback = 'Valid URL format';
+                } catch (e) {
+                    feedback = 'Invalid URL format';
+                }
+            } else if (target.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+                // Basic IP format check
+                const parts = target.split('.');
+                isValid = parts.every(part => parseInt(part) >= 0 && parseInt(part) <= 255);
+                feedback = isValid ? 'Valid IP address format' : 'Invalid IP address';
+            } else if (target.match(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
+                isValid = true;
+                feedback = 'Valid hostname format';
+            } else if (target === 'localhost') {
+                isValid = true;
+                feedback = 'Localhost target';
+            }
+            
+            // Show validation feedback
+            targetInput.classList.add(isValid ? 'is-valid' : 'is-invalid');
+            
+            // Update or create feedback element
+            let feedbackElement = document.getElementById('targetValidationFeedback');
+            if (!feedbackElement) {
+                feedbackElement = document.createElement('small');
+                feedbackElement.id = 'targetValidationFeedback';
+                feedbackElement.className = 'form-feedback';
+                targetInput.parentNode.appendChild(feedbackElement);
+            }
+            
+            feedbackElement.textContent = feedback;
+            feedbackElement.className = `form-feedback ${isValid ? 'valid-feedback' : 'invalid-feedback'}`;
+        }
+
+        // Tool option click handlers
+        document.querySelectorAll('.tool-option').forEach(option => {
+            option.addEventListener('click', function(e) {
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        });
+
+        // Form validation styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .is-valid {
+                border-color: #10b981;
+                box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+            }
+            
+            .is-invalid {
+                border-color: #dc2626;
+                box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.25);
+            }
+            
+            .valid-feedback {
+                color: #166534;
+            }
+            
+            .invalid-feedback {
+                color: #991b1b;
+            }
+            
+            .form-feedback {
+                display: block;
+                margin-top: 0.25rem;
+                font-size: 0.8rem;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+{% endblock %}
